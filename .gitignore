@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+.next/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.dart_tool/
+unpacked/

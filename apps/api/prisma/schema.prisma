@@ -1,0 +1,1000 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// TENANTS (Multi-tenant SaaS core)
+// ─────────────────────────────────────────
+
+enum TenantType {
+  company
+  hospital
+  education
+  other
+}
+
+enum TenantStatus {
+  active
+  suspended
+  trial
+  expired
+}
+
+enum SubscriptionPlan {
+  basic
+  professional
+  enterprise
+}
+
+model Tenant {
+  id                String           @id @default(uuid())
+  name              String
+  type              TenantType       @default(company)
+  logoUrl           String?
+  primaryColor      String?
+  secondaryColor    String?
+  maxEmployees      Int
+  subscriptionPlan  SubscriptionPlan @default(basic)
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  status            TenantStatus     @default(trial)
+  timezone          String           @default("Africa/Cairo")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  departments        Department[]
+  jobTitles          JobTitle[]
+  employees          Employee[]
+  workflowTemplates  WorkflowTemplate[]
+  leaveTypes         LeaveType[]
+  posts              Post[]
+  surveys            Survey[]
+  appraisalTemplates AppraisalTemplate[]
+  appraisalCycles    AppraisalCycle[]
+  payslips           Payslip[]
+  helpdeskCategories HelpdeskCategory[]
+  importBatches      ImportBatch[]
+  exportSchedules    ExportSchedule[]
+  chatGroups         ChatGroup[]
+  workflowInstances  WorkflowInstance[]
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+
+  @@map("tenants")
+}
+
+// ─────────────────────────────────────────
+// ORG STRUCTURE
+// ─────────────────────────────────────────
+
+model Department {
+  id                 String  @id @default(uuid())
+  tenantId           String
+  parentDepartmentId String?
+  name               String
+  headEmployeeId     String?
+  createdAt          DateTime @default(now())
+
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentDepartment Department?  @relation("DeptChildren", fields: [parentDepartmentId], references: [id])
+  children         Department[] @relation("DeptChildren")
+  employees        Employee[]
+  headEmployee     Employee?    @relation("DeptHead", fields: [headEmployeeId], references: [id])
+
+  @@map("departments")
+}
+
+model JobTitle {
+  id         String @id @default(uuid())
+  tenantId   String
+  title      String
+  gradeLevel Int?
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees           Employee[]
+  jobDescriptions     JobDescription[]
+  appraisalTemplates  AppraisalTemplate[]
+  recruitmentRequests RecruitmentRequest[]
+
+  @@map("job_titles")
+}
+
+model JobDescription {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  jobTitleId         String
+  departmentId       String?
+  jobPurpose         String?
+  responsibilities   Json?
+  qualifications     String?
+  experienceRequired String?
+  skills             Json?
+  salaryRangeMin     Decimal?
+  salaryRangeMax     Decimal?
+  updatedById        String?
+  updatedAt          DateTime @updatedAt
+
+  jobTitle            JobTitle             @relation(fields: [jobTitleId], references: [id])
+  updatedBy           Employee?            @relation("JDUpdater", fields: [updatedById], references: [id])
+  recruitmentRequests RecruitmentRequest[]
+
+  @@map("job_descriptions")
+}
+
+// ─────────────────────────────────────────
+// EMPLOYEES & ROLES
+// ─────────────────────────────────────────
+
+enum EmployeeStatus {
+  active
+  suspended
+  terminated
+}
+
+enum EmployeeRole {
+  employee
+  manager
+  hr_admin
+  super_admin
+}
+
+model Employee {
+  id              String         @id @default(uuid())
+  tenantId        String
+  employeeCode    String
+  fullName        String
+  email           String?
+  phone           String?
+  passwordHash    String?
+  departmentId    String?
+  jobTitleId      String?
+  directManagerId String?
+  hireDate        DateTime?
+  isManager       Boolean        @default(false)
+  status          EmployeeStatus @default(active)
+  profilePhotoUrl String?
+  fcmToken        String?
+  createdAt       DateTime       @default(now())
+
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department? @relation(fields: [departmentId], references: [id])
+  jobTitle      JobTitle?   @relation(fields: [jobTitleId], references: [id])
+  directManager Employee?   @relation("Reports", fields: [directManagerId], references: [id])
+  subordinates  Employee[]  @relation("Reports")
+
+  roles                        EmployeeRoleAssignment[]
+  headOfDepartments            Department[]               @relation("DeptHead")
+  leaveRequests                LeaveRequest[]
+  leaveBalances                EmployeeLeaveBalance[]
+  workflowActions              WorkflowActionLog[]
+  recruitmentRequestsSubmitted RecruitmentRequest[]       @relation("RecruitmentRequester")
+  appraisals                   EmployeeAppraisal[]        @relation("AppraisalEmployee")
+  managedAppraisals            EmployeeAppraisal[]        @relation("AppraisalManager")
+  payslips                     Payslip[]
+  payslipAccessLogs            PayslipAccessLog[]         @relation("PayslipViewer")
+  postsAuthored                Post[]
+  postReactions                PostReaction[]
+  postComments                 PostComment[]
+  postViews                    PostView[]
+  chatGroupsCreated            ChatGroup[]
+  chatMessages                 ChatMessage[]
+  chatGroupMemberships         ChatGroupMember[]
+  surveyParticipations         SurveyParticipation[]
+  helpdeskTicketsCreated       HelpdeskTicket[]           @relation("TicketCreator")
+  helpdeskTicketsAssigned      HelpdeskTicket[]           @relation("TicketAssignee")
+  helpdeskMessages             HelpdeskTicketMessage[]
+  jobDescriptionsUpdated       JobDescription[]           @relation("JDUpdater")
+  importBatches                ImportBatch[]
+  surveysCreated               Survey[]
+
+  @@unique([tenantId, employeeCode])
+  @@map("employees")
+}
+
+model EmployeeRoleAssignment {
+  employeeId String
+  role       EmployeeRole
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, role])
+  @@map("employee_roles")
+}
+
+// ─────────────────────────────────────────
+// WORKFLOW ENGINE
+// ─────────────────────────────────────────
+
+enum WorkflowModule {
+  leave
+  permission
+  mission
+  appraisal
+  recruitment
+  helpdesk
+}
+
+enum ApproverType {
+  direct_manager
+  department_head
+  specific_role
+  specific_user
+}
+
+model WorkflowTemplate {
+  id         String         @id @default(uuid())
+  tenantId   String
+  name       String
+  module     WorkflowModule
+  conditions Json?
+  isActive   Boolean        @default(true)
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  steps              WorkflowStep[]
+  instances          WorkflowInstance[]
+  leaveTypes         LeaveType[]
+  appraisalTemplates AppraisalTemplate[]
+  helpdeskCategories HelpdeskCategory[]
+
+  @@map("workflow_templates")
+}
+
+model WorkflowStep {
+  id                     String        @id @default(uuid())
+  workflowTemplateId     String
+  stepOrder              Int
+  approverType           ApproverType
+  approverReference      String?
+  slaHours               Int?
+  escalationApproverType ApproverType?
+
+  workflowTemplate WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_steps")
+}
+
+enum WorkflowStatus {
+  in_review
+  approved
+  rejected
+  returned
+  cancelled
+}
+
+model WorkflowInstance {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  workflowTemplateId String?
+  relatedEntityType  String
+  relatedEntityId    String
+  currentStep        Int            @default(1)
+  status             WorkflowStatus @default(in_review)
+  createdAt          DateTime       @default(now())
+
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflowTemplate   WorkflowTemplate? @relation(fields: [workflowTemplateId], references: [id])
+  actionsLog         WorkflowActionLog[]
+  leaveRequests      LeaveRequest[]
+  recruitmentRequests RecruitmentRequest[]
+  employeeAppraisals  EmployeeAppraisal[]
+  helpdeskTickets     HelpdeskTicket[]
+
+  @@map("workflow_instances")
+}
+
+enum WorkflowAction {
+  approve
+  reject
+  return
+  delegate
+}
+
+model WorkflowActionLog {
+  id                 String         @id @default(uuid())
+  workflowInstanceId String
+  stepOrder          Int
+  actorEmployeeId    String?
+  action             WorkflowAction
+  comment            String?
+  actedAt            DateTime       @default(now())
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  actor            Employee?        @relation(fields: [actorEmployeeId], references: [id])
+
+  @@map("workflow_actions_log")
+}
+
+// ─────────────────────────────────────────
+// LEAVE / PERMISSION / MISSION
+// ─────────────────────────────────────────
+
+enum LeaveCategory {
+  leave
+  permission
+  mission
+}
+
+enum AccrualType {
+  fixed_annual
+  monthly_accrual
+  by_seniority
+}
+
+model LeaveType {
+  id                 String        @id @default(uuid())
+  tenantId           String
+  name               String
+  category           LeaveCategory
+  isBalanceBased     Boolean       @default(true)
+  accrualType        AccrualType?
+  annualQuota        Decimal?
+  carryOverCap       Decimal?
+  requiresAttachment Boolean       @default(false)
+  workflowTemplateId String?
+  minDays            Decimal?
+  maxDays            Decimal?
+  advanceNoticeDays  Int?
+  createdAt          DateTime      @default(now())
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflowTemplate WorkflowTemplate? @relation(fields: [workflowTemplateId], references: [id])
+  leaveBalances    EmployeeLeaveBalance[]
+  leaveRequests    LeaveRequest[]
+
+  @@map("leave_types")
+}
+
+model EmployeeLeaveBalance {
+  id          String  @id @default(uuid())
+  employeeId  String
+  leaveTypeId String
+  year        Int
+  entitled    Decimal
+  used        Decimal @default(0)
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@map("employee_leave_balances")
+}
+
+enum RequestStatus {
+  draft
+  submitted
+  in_review
+  approved
+  rejected
+  returned
+  cancelled
+}
+
+model LeaveRequest {
+  id                 String        @id @default(uuid())
+  tenantId           String
+  employeeId         String
+  leaveTypeId        String
+  startDate          DateTime
+  endDate            DateTime?
+  startTime          String?
+  endTime            String?
+  totalDays          Decimal?
+  totalHours         Decimal?
+  reason             String?
+  attachmentUrl      String?
+  status             RequestStatus @default(submitted)
+  workflowInstanceId String?
+  createdAt          DateTime      @default(now())
+
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  leaveType        LeaveType         @relation(fields: [leaveTypeId], references: [id])
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+
+  @@map("leave_requests")
+}
+
+// ─────────────────────────────────────────
+// RECRUITMENT
+// ─────────────────────────────────────────
+
+enum EmploymentType {
+  permanent
+  temporary
+  internship
+  replacement
+}
+
+model RecruitmentRequest {
+  id                 String          @id @default(uuid())
+  tenantId           String
+  requestedById      String
+  departmentId       String
+  jobTitleId         String?
+  newJobTitleName    String?
+  jobDescriptionId   String?
+  vacanciesCount     Int             @default(1)
+  employmentType     EmploymentType?
+  reason             String?
+  proposedSalaryMin  Decimal?
+  proposedSalaryMax  Decimal?
+  targetStartDate    DateTime?
+  attachmentUrl      String?
+  status             RequestStatus   @default(submitted)
+  workflowInstanceId String?
+  createdAt          DateTime        @default(now())
+
+  requestedBy      Employee          @relation("RecruitmentRequester", fields: [requestedById], references: [id])
+  jobTitle         JobTitle?         @relation(fields: [jobTitleId], references: [id])
+  jobDescription   JobDescription?   @relation(fields: [jobDescriptionId], references: [id])
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+
+  @@map("recruitment_requests")
+}
+
+// ─────────────────────────────────────────
+// INTERNAL COMMUNICATION
+// ─────────────────────────────────────────
+
+enum PostType {
+  normal
+  announcement
+}
+
+enum TargetScope {
+  company
+  department
+  custom
+}
+
+model Post {
+  id                  String      @id @default(uuid())
+  tenantId            String
+  authorId            String
+  content             String?
+  mediaUrls           Json?
+  postType            PostType    @default(normal)
+  targetScope         TargetScope @default(company)
+  targetDepartmentIds String[]
+  isPinned            Boolean     @default(false)
+  publishAt           DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime    @default(now())
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author    Employee       @relation(fields: [authorId], references: [id])
+  reactions PostReaction[]
+  comments  PostComment[]
+  views     PostView[]
+
+  @@map("posts")
+}
+
+model PostReaction {
+  postId       String
+  employeeId   String
+  reactionType String
+
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@id([postId, employeeId])
+  @@map("post_reactions")
+}
+
+model PostComment {
+  id         String   @id @default(uuid())
+  postId     String
+  employeeId String
+  comment    String
+  createdAt  DateTime @default(now())
+
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("post_comments")
+}
+
+model PostView {
+  postId     String
+  employeeId String
+  viewedAt   DateTime @default(now())
+
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@id([postId, employeeId])
+  @@map("post_views")
+}
+
+model ChatGroup {
+  id                String   @id @default(uuid())
+  tenantId          String
+  name              String?
+  isDepartmentGroup Boolean  @default(false)
+  departmentId      String?
+  createdById       String?
+  createdAt         DateTime @default(now())
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy Employee?         @relation(fields: [createdById], references: [id])
+  members   ChatGroupMember[]
+  messages  ChatMessage[]
+
+  @@map("chat_groups")
+}
+
+model ChatGroupMember {
+  chatGroupId String
+  employeeId  String
+
+  chatGroup ChatGroup @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+
+  @@id([chatGroupId, employeeId])
+  @@map("chat_group_members")
+}
+
+model ChatMessage {
+  id            String    @id @default(uuid())
+  chatGroupId   String?
+  senderId      String
+  receiverId    String?
+  messageText   String?
+  attachmentUrl String?
+  sentAt        DateTime  @default(now())
+  readAt        DateTime?
+
+  chatGroup ChatGroup? @relation(fields: [chatGroupId], references: [id], onDelete: Cascade)
+  sender    Employee   @relation(fields: [senderId], references: [id])
+
+  @@map("chat_messages")
+}
+
+// ─────────────────────────────────────────
+// SURVEYS
+// ─────────────────────────────────────────
+
+enum QuestionType {
+  mcq
+  rating
+  likert
+  text
+  yes_no
+}
+
+model Survey {
+  id                  String      @id @default(uuid())
+  tenantId            String
+  title               String
+  description         String?
+  isAnonymous         Boolean     @default(true)
+  targetScope         TargetScope @default(company)
+  targetDepartmentIds String[]
+  startDate           DateTime?
+  endDate             DateTime?
+  isMandatory         Boolean     @default(false)
+  createdById         String?
+  createdAt           DateTime    @default(now())
+
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy      Employee?             @relation(fields: [createdById], references: [id])
+  questions      SurveyQuestion[]
+  responses      SurveyResponse[]
+  participations SurveyParticipation[]
+
+  @@map("surveys")
+}
+
+model SurveyQuestion {
+  id           String       @id @default(uuid())
+  surveyId     String
+  sectionName  String?
+  questionText String
+  questionType QuestionType
+  options      Json?
+  displayOrder Int
+
+  survey  Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers SurveyAnswer[]
+
+  @@map("survey_questions")
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid())
+  surveyId    String
+  submittedAt DateTime @default(now())
+
+  survey  Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers SurveyAnswer[]
+
+  @@map("survey_responses")
+}
+
+model SurveyAnswer {
+  id          String  @id @default(uuid())
+  responseId  String
+  questionId  String
+  answerValue String?
+
+  response SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question SurveyQuestion @relation(fields: [questionId], references: [id])
+
+  @@map("survey_answers")
+}
+
+model SurveyParticipation {
+  surveyId    String
+  employeeId  String
+  respondedAt DateTime?
+
+  survey   Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@id([surveyId, employeeId])
+  @@map("survey_participation")
+}
+
+// ─────────────────────────────────────────
+// PERFORMANCE APPRAISAL
+// ─────────────────────────────────────────
+
+enum CycleType {
+  semi_annual
+  annual
+}
+
+enum SectionType {
+  kpi
+  competency
+  discipline
+}
+
+enum EvaluatorType {
+  self
+  manager
+  peer
+}
+
+enum AppraisalStatus {
+  not_started
+  in_progress
+  completed
+  approved
+}
+
+model AppraisalTemplate {
+  id                     String    @id @default(uuid())
+  tenantId               String
+  name                   String
+  cycleType              CycleType
+  jobTitleId             String?
+  enableSelfAppraisal    Boolean   @default(true)
+  enableManagerAppraisal Boolean   @default(true)
+  enable360              Boolean   @default(false)
+  workflowTemplateId     String?
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobTitle           JobTitle?          @relation(fields: [jobTitleId], references: [id])
+  workflowTemplate   WorkflowTemplate?  @relation(fields: [workflowTemplateId], references: [id])
+  sections           AppraisalSection[]
+  employeeAppraisals EmployeeAppraisal[]
+
+  @@map("appraisal_templates")
+}
+
+model AppraisalSection {
+  id          String      @id @default(uuid())
+  templateId  String
+  sectionType SectionType
+  weight      Decimal
+
+  template AppraisalTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  criteria AppraisalCriterion[]
+
+  @@map("appraisal_sections")
+}
+
+model AppraisalCriterion {
+  id            String  @id @default(uuid())
+  sectionId     String
+  criterionName String
+  weight        Decimal
+
+  section AppraisalSection         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  scores  AppraisalCriterionScore[]
+
+  @@map("appraisal_criteria")
+}
+
+model AppraisalCycle {
+  id        String          @id @default(uuid())
+  tenantId  String
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  status    AppraisalStatus @default(not_started)
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appraisals EmployeeAppraisal[]
+
+  @@map("appraisal_cycles")
+}
+
+model EmployeeAppraisal {
+  id                 String          @id @default(uuid())
+  cycleId            String
+  employeeId         String
+  templateId         String
+  managerId          String?
+  selfScore          Decimal?
+  managerScore       Decimal?
+  finalScore         Decimal?
+  status             AppraisalStatus @default(not_started)
+  workflowInstanceId String?
+
+  cycle            AppraisalCycle     @relation(fields: [cycleId], references: [id])
+  employee         Employee           @relation("AppraisalEmployee", fields: [employeeId], references: [id])
+  template         AppraisalTemplate  @relation(fields: [templateId], references: [id])
+  manager          Employee?          @relation("AppraisalManager", fields: [managerId], references: [id])
+  workflowInstance WorkflowInstance?  @relation(fields: [workflowInstanceId], references: [id])
+  criteriaScores   AppraisalCriterionScore[]
+
+  @@map("employee_appraisals")
+}
+
+model AppraisalCriterionScore {
+  id                  String        @id @default(uuid())
+  employeeAppraisalId String
+  criterionId         String
+  evaluatorType       EvaluatorType
+  score               Decimal
+  comment             String?
+
+  employeeAppraisal EmployeeAppraisal  @relation(fields: [employeeAppraisalId], references: [id], onDelete: Cascade)
+  criterion         AppraisalCriterion @relation(fields: [criterionId], references: [id])
+
+  @@unique([employeeAppraisalId, criterionId, evaluatorType])
+  @@map("appraisal_criteria_scores")
+}
+
+// ─────────────────────────────────────────
+// PAYSLIPS
+// ─────────────────────────────────────────
+
+model Payslip {
+  id           String   @id @default(uuid())
+  tenantId     String
+  employeeId   String
+  month        Int
+  year         Int
+  basicSalary  Decimal
+  allowances   Json?
+  deductions   Json?
+  netSalary    Decimal
+  pdfUrl       String?
+  uploadedById String?
+  uploadedAt   DateTime @default(now())
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee   Employee           @relation(fields: [employeeId], references: [id])
+  accessLogs PayslipAccessLog[]
+
+  @@unique([employeeId, month, year])
+  @@map("payslips")
+}
+
+model PayslipAccessLog {
+  id         String   @id @default(uuid())
+  payslipId  String
+  viewedById String
+  viewedAt   DateTime @default(now())
+
+  payslip  Payslip  @relation(fields: [payslipId], references: [id])
+  viewedBy Employee @relation("PayslipViewer", fields: [viewedById], references: [id])
+
+  @@map("payslip_access_log")
+}
+
+// ─────────────────────────────────────────
+// HELPDESK
+// ─────────────────────────────────────────
+
+enum TicketPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  pending_employee
+  resolved
+  closed
+  reopened
+}
+
+model HelpdeskCategory {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  name               String
+  parentCategoryId   String?
+  assignedGroup      String?
+  defaultPriority    TicketPriority @default(medium)
+  slaFirstResponseHrs Int?
+  slaResolutionHrs   Int?
+  workflowTemplateId String?
+  customFieldsSchema Json?
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentCategory   HelpdeskCategory?  @relation("CategoryChildren", fields: [parentCategoryId], references: [id])
+  subCategories    HelpdeskCategory[] @relation("CategoryChildren")
+  workflowTemplate WorkflowTemplate?  @relation(fields: [workflowTemplateId], references: [id])
+  tickets          HelpdeskTicket[]
+
+  @@map("helpdesk_categories")
+}
+
+model HelpdeskTicket {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  ticketNumber       String         @unique
+  employeeId         String
+  categoryId         String
+  subject            String
+  description        String?
+  customFieldsValues Json?
+  priority           TicketPriority @default(medium)
+  status             TicketStatus   @default(open)
+  assignedToId       String?
+  workflowInstanceId String?
+  satisfactionRating Int?
+  createdAt          DateTime       @default(now())
+  firstResponseAt    DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+
+  employee         Employee          @relation("TicketCreator", fields: [employeeId], references: [id])
+  category         HelpdeskCategory  @relation(fields: [categoryId], references: [id])
+  assignedTo       Employee?         @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
+  messages         HelpdeskTicketMessage[]
+
+  @@map("helpdesk_tickets")
+}
+
+model HelpdeskTicketMessage {
+  id            String   @id @default(uuid())
+  ticketId      String
+  senderId      String
+  message       String?
+  attachmentUrl String?
+  isInternalNote Boolean @default(false)
+  createdAt     DateTime @default(now())
+
+  ticket HelpdeskTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender Employee       @relation(fields: [senderId], references: [id])
+
+  @@map("helpdesk_ticket_messages")
+}
+
+// ─────────────────────────────────────────
+// IMPORT / EXPORT
+// ─────────────────────────────────────────
+
+enum ImportModule {
+  employees
+  leave_balances
+  appraisals
+  payroll
+}
+
+enum ImportStatus {
+  pending_review
+  confirmed
+  rolled_back
+}
+
+model ImportBatch {
+  id           String       @id @default(uuid())
+  tenantId     String
+  module       ImportModule
+  fileName     String?
+  uploadedById String
+  totalRows    Int?
+  successRows  Int?
+  failedRows   Int?
+  status       ImportStatus @default(pending_review)
+  errorReport  Json?
+  uploadedAt   DateTime     @default(now())
+  confirmedAt  DateTime?
+  rolledBackAt DateTime?
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy Employee            @relation(fields: [uploadedById], references: [id])
+  records    ImportBatchRecord[]
+
+  @@map("import_batches")
+}
+
+model ImportBatchRecord {
+  id               String @id @default(uuid())
+  importBatchId    String
+  affectedTable    String
+  affectedRecordId String
+  operation        String
+
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@map("import_batch_records")
+}
+
+model ExportSchedule {
+  id              String   @id @default(uuid())
+  tenantId        String
+  module          String
+  frequency       String
+  recipientEmails Json?
+  filters         Json?
+  createdById     String?
+  isActive        Boolean  @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("export_schedules")
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  actorId    String?
+  action     String
+  entityType String?
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
+enum NotificationType {
+  workflow
+  announcement
+  chat
+  survey
+  appraisal
+  payslip
+  sla_reminder
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  tenantId   String
+  employeeId String
+  type       NotificationType
+  title      String
+  body       String?
+  data       Json?
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}

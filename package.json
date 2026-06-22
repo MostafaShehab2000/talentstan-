@@ -1,0 +1,21 @@
+{
+  "name": "talentstan",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web-admin",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web-admin",
+    "db:generate": "npm run prisma:generate --workspace=apps/api",
+    "db:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "db:studio": "npm run prisma:studio --workspace=apps/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
