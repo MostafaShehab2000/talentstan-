@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  body { background-color: #f9fafb; color: #111827; }
+}
