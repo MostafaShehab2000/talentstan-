@@ -7,6 +7,12 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { LeaveModule } from './modules/leave/leave.module';
+import { RecruitmentModule } from './modules/recruitment/recruitment.module';
+import { CommunicationModule } from './modules/communication/communication.module';
+import { HelpdeskModule } from './modules/helpdesk/helpdesk.module';
+import { PayslipModule } from './modules/payslip/payslip.module';
+import { SurveysModule } from './modules/surveys/surveys.module';
+import { AppraisalModule } from './modules/appraisal/appraisal.module';
 
 @Module({
   imports: [
@@ -18,6 +24,12 @@ import { LeaveModule } from './modules/leave/leave.module';
     DepartmentsModule,
     WorkflowModule,
     LeaveModule,
+    RecruitmentModule,
+    CommunicationModule,
+    HelpdeskModule,
+    PayslipModule,
+    SurveysModule,
+    AppraisalModule,
   ],
 })
 export class AppModule {}
