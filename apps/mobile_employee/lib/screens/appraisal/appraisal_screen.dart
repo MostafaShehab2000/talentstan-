@@ -214,7 +214,7 @@ class _SelfAssessmentFormState extends State<_SelfAssessmentForm> {
     final sections = (_appraisal?['template']?['sections'] as List? ?? []);
     final allCriteria = sections.expand((s) => (s['criteria'] as List? ?? [])).toList();
 
-    if (_scores.length < allCriteria.length) {
+    if (_scores.values.any((v) => v < 0)) {
       setState(() => _error = 'يرجى تقييم جميع المعايير قبل الإرسال');
       return;
     }
@@ -418,7 +418,7 @@ class _CriterionItemState extends State<_CriterionItem> {
   @override
   void initState() {
     super.initState();
-    _score = widget.score ?? -1;
+    _score = widget.score ?? -1.0;
     _commentCtrl = TextEditingController(text: widget.comment ?? '');
   }
 
@@ -439,32 +439,33 @@ class _CriterionItemState extends State<_CriterionItem> {
         ]),
         const SizedBox(height: 12),
 
-        // Star rating 1-5 → multiply by 20 for percentage
-        Row(children: List.generate(5, (i) {
-          final val = (i + 1) * 20.0;
-          final selected = _score >= val;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _score = val);
-              widget.onScoreChanged(val);
+        // Numeric score 1-100
+        Row(children: [
+          Expanded(child: Slider(
+            value: _score < 0 ? 0 : _score,
+            min: 0, max: 100, divisions: 100,
+            activeColor: _scoreColor(_score.round()),
+            onChanged: (v) {
+              setState(() => _score = v);
+              widget.onScoreChanged(v);
             },
-            child: Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: Icon(
-                selected ? Icons.star_rounded : Icons.star_outline_rounded,
-                color: selected ? const Color(0xFFF59E0B) : kBorder,
-                size: 32,
-              ),
+          )),
+          Container(
+            width: 52, height: 36,
+            decoration: BoxDecoration(
+              color: _score < 0 ? kSurface : _scoreColor(_score.round()).withAlpha(25),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _score < 0 ? kBorder : _scoreColor(_score.round()), width: 1.5),
             ),
-          );
-        }).reversed.toList()),
-
-        if (_score > 0) ...[
-          const SizedBox(height: 6),
-          Text(
-            _scoreLabel(_score.round()),
-            style: const TextStyle(fontSize: 12, color: kPrimary, fontWeight: FontWeight.w600),
+            child: Center(child: Text(
+              _score < 0 ? '—' : '${_score.round()}',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _score < 0 ? kTextSub : _scoreColor(_score.round())),
+            )),
           ),
+        ]),
+        if (_score >= 0) ...[
+          const SizedBox(height: 4),
+          Text(_scoreLabel(_score.round()), style: TextStyle(fontSize: 12, color: _scoreColor(_score.round()), fontWeight: FontWeight.w600)),
         ],
 
         const SizedBox(height: 8),
@@ -495,12 +496,18 @@ class _CriterionItemState extends State<_CriterionItem> {
     );
   }
 
-  String _scoreLabel(int s) => switch (s) {
-    20  => 'ضعيف جداً',
-    40  => 'ضعيف',
-    60  => 'مقبول',
-    80  => 'جيد',
-    100 => 'ممتاز',
-    _   => '',
-  };
+  Color _scoreColor(int s) {
+    if (s >= 90) return kSuccess;
+    if (s >= 75) return kPrimary;
+    if (s >= 60) return kWarning;
+    return kDanger;
+  }
+
+  String _scoreLabel(int s) {
+    if (s >= 90) return 'ممتاز — Outstanding';
+    if (s >= 75) return 'يتجاوز التوقعات — Exceeds';
+    if (s >= 60) return 'يلبي التوقعات — Meets';
+    if (s >= 40) return 'يحتاج تحسين — Needs Improvement';
+    return 'ضعيف';
+  }
 }

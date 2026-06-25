@@ -276,7 +276,7 @@ class _PostCardState extends State<_PostCard> {
               try { await ApiClient().dio.post('/communication/posts/${post['id']}/react', data: {'type': 'like'}); }
               catch (_) { setState(() { _liked = !_liked; _likes += _liked ? 1 : -1; }); }
             }),
-          _ActionBtn(icon: Icons.comment_outlined, label: 'تعليق ($comments)', onTap: () {}),
+          _ActionBtn(icon: Icons.comment_outlined, label: 'تعليق ($comments)', onTap: () => _showComments(context, post)),
         ]),
         const Divider(height: 0, color: kBorder),
       ]),
@@ -284,6 +284,125 @@ class _PostCardState extends State<_PostCard> {
   }
 
   String _fmt(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return ''; } }
+
+  void _showComments(BuildContext context, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _CommentsSheet(postId: post['id'], postTitle: post['author']?['fullName'] ?? 'إعلان'),
+    );
+  }
+}
+
+// ─── Comments Sheet ───────────────────────────────────────────────────────────
+
+class _CommentsSheet extends StatefulWidget {
+  final String postId;
+  final String postTitle;
+  const _CommentsSheet({required this.postId, required this.postTitle});
+  @override
+  State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+  List<dynamic> _comments = [];
+  bool _loading = true;
+  final _ctrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    try {
+      final res = await ApiClient().dio.get('/communication/posts/${widget.postId}/comments');
+      if (mounted) setState(() {
+        _comments = res.data is List ? res.data : (res.data['data'] ?? []);
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _send() async {
+    if (_ctrl.text.trim().isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await ApiClient().dio.post('/communication/posts/${widget.postId}/comments', data: {'content': _ctrl.text.trim()});
+      _ctrl.clear();
+      await _load();
+    } catch (_) {} finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: MediaQuery.of(context).size.height * 0.75,
+    child: Column(children: [
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kBorder))),
+        child: Row(children: [
+          Expanded(child: Text('تعليقات — ${widget.postTitle}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kText))),
+          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+        ]),
+      ),
+      Expanded(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: kPrimary))
+            : _comments.isEmpty
+                ? const Center(child: Text('لا توجد تعليقات — كن أول من يعلّق!', style: TextStyle(color: kTextSub)))
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _comments.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final c = _comments[i];
+                      final name = c['author']?['fullName'] ?? 'موظف';
+                      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        CircleAvatar(radius: 16, backgroundColor: kPrimaryLight,
+                          child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w800))),
+                        const SizedBox(width: 10),
+                        Expanded(child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: kSurface, borderRadius: BorderRadius.circular(12)),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kText)),
+                            const SizedBox(height: 2),
+                            Text(c['content'] ?? '', style: const TextStyle(fontSize: 13, color: kText, height: 1.4)),
+                          ]),
+                        )),
+                      ]);
+                    },
+                  ),
+      ),
+      Container(
+        padding: EdgeInsets.fromLTRB(12, 8, 12, MediaQuery.of(context).viewInsets.bottom + 12),
+        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: kBorder))),
+        child: Row(children: [
+          Expanded(child: TextField(
+            controller: _ctrl,
+            decoration: const InputDecoration(hintText: 'اكتب تعليقاً...', contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10)),
+            onSubmitted: (_) => _send(),
+          )),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _sending ? null : _send,
+            icon: _sending
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary))
+                : const Icon(Icons.send_rounded, color: kPrimary),
+          ),
+        ]),
+      ),
+    ]),
+  );
 }
 
 // ─── Birthdays Tab ────────────────────────────────────────────────────────────
