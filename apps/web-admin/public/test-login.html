@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>Test Login</title>
+<style>
+  body { font-family: Arial; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #eff6ff; }
+  .card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); width: 360px; }
+  input { width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-top: 6px; }
+  button { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #2563eb; color: white; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 16px; }
+  .error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 8px; margin-top: 12px; display: none; }
+  .success { color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-top: 12px; display: none; }
+  label { font-size: 13px; font-weight: 600; color: #374151; }
+  #status { font-size: 12px; color: #6b7280; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2 style="text-align:center; color:#111; margin-top:0">Talentstan — اختبار تسجيل الدخول</h2>
+  <p id="status">جاهز للاختبار</p>
+
+  <label>البريد الإلكتروني:</label>
+  <input type="text" id="email" value="admin@talentstan.com" dir="ltr">
+
+  <label style="margin-top:12px; display:block">كلمة المرور:</label>
+  <input type="password" id="password" value="TalentStan@2026!">
+
+  <button onclick="doLogin()">تسجيل الدخول كـ Super Admin</button>
+
+  <div class="error" id="error"></div>
+  <div class="success" id="success"></div>
+</div>
+
+<script>
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('error');
+  const okEl = document.getElementById('success');
+  const statusEl = document.getElementById('status');
+
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+  statusEl.textContent = 'جاري الاتصال بالـ API...';
+
+  try {
+    const res = await fetch('/api/auth/super-admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    statusEl.textContent = 'Status: ' + res.status;
+
+    if (!res.ok) {
+      errEl.textContent = 'خطأ: ' + JSON.stringify(data.message);
+      errEl.style.display = 'block';
+      return;
+    }
+
+    // حفظ التوكن
+    document.cookie = 'access_token=' + data.accessToken + '; path=/; max-age=900';
+    document.cookie = 'refresh_token=' + data.refreshToken + '; path=/; max-age=604800';
+    const user = JSON.stringify({id:'super-admin', fullName:'Super Admin', email: email, roles:['super_admin'], tenantId:null});
+    document.cookie = 'user=' + encodeURIComponent(user) + '; path=/; max-age=604800';
+
+    okEl.textContent = '✓ تم تسجيل الدخول! جاري التوجيه لـ /super-admin ...';
+    okEl.style.display = 'block';
+
+    setTimeout(() => { window.location.href = '/super-admin'; }, 1500);
+
+  } catch (err) {
+    statusEl.textContent = 'فشل الاتصال';
+    errEl.textContent = 'خطأ في الاتصال: ' + err.message + ' — تأكد إن الـ API شغال على port 3000';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

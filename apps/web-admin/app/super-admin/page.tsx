@@ -11,14 +11,14 @@ import type { Tenant } from '@/types';
 export default function SuperAdminDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['tenants'],
-    queryFn: () => api.get('/tenants').then((r) => r.data),
+    queryFn: () => api.get('/super-admin/tenants').then((r) => r.data),
   });
 
   const tenants: Tenant[] = data?.data ?? [];
   const active = tenants.filter((t) => t.status === 'active').length;
   const expiringSoon = tenants.filter((t) => {
-    if (!t.subscriptionExpiresAt) return false;
-    const days = (new Date(t.subscriptionExpiresAt).getTime() - Date.now()) / 86400000;
+    if (!t.subscriptionEnd) return false;
+    const days = (new Date(t.subscriptionEnd).getTime() - Date.now()) / 86400000;
     return days <= 30 && days >= 0;
   }).length;
 
@@ -60,7 +60,7 @@ export default function SuperAdminDashboard() {
                   </Td>
                   <Td>{t._count?.employees ?? 0} / {t.maxEmployees}</Td>
                   <Td><Badge status={t.status} /></Td>
-                  <Td>{formatDate(t.subscriptionExpiresAt)}</Td>
+                  <Td>{formatDate(t.subscriptionEnd)}</Td>
                 </Tr>
               ))}
             </Tbody>

@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto/employee.dto';
+import { EmployeeRole } from '@prisma/client';
 
 @Injectable()
 export class EmployeesService {
@@ -57,6 +58,55 @@ export class EmployeesService {
         directManager: { select: { id: true, fullName: true, employeeCode: true } },
       },
     });
+  }
+
+  async bulkImport(tenantId: string, employees: CreateEmployeeDto[]) {
+    const results: { success: string[]; failed: { row: number; code: string; reason: string }[] } = {
+      success: [],
+      failed: [],
+    };
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const currentCount = await this.prisma.employee.count({ where: { tenantId, status: 'active' } });
+
+    for (let i = 0; i < employees.length; i++) {
+      const dto = employees[i];
+      try {
+        if (tenant && currentCount + results.success.length >= tenant.maxEmployees) {
+          results.failed.push({ row: i + 2, code: dto.employeeCode, reason: 'تجاوز الحد الأقصى للموظفين' });
+          continue;
+        }
+        const existing = await this.prisma.employee.findFirst({
+          where: { tenantId, OR: [{ employeeCode: dto.employeeCode }, ...(dto.email ? [{ email: dto.email }] : [])] },
+        });
+        if (existing) {
+          results.failed.push({ row: i + 2, code: dto.employeeCode, reason: 'الكود أو البريد مكرر' });
+          continue;
+        }
+        const passwordHash = await this.authService.hashPassword(dto.password);
+        const roles: EmployeeRole[] = (dto.roles ?? ['employee']) as EmployeeRole[];
+        await this.prisma.employee.create({
+          data: {
+            tenantId,
+            employeeCode: dto.employeeCode,
+            fullName: dto.fullName,
+            email: dto.email,
+            phone: dto.phone,
+            passwordHash,
+            departmentId: dto.departmentId || null,
+            jobTitleId: dto.jobTitleId || null,
+            directManagerId: dto.directManagerId || null,
+            hireDate: dto.hireDate ? new Date(dto.hireDate) : undefined,
+            isManager: dto.isManager ?? false,
+            roles: { create: roles.map((role) => ({ role })) },
+          },
+        });
+        results.success.push(dto.employeeCode);
+      } catch (e: any) {
+        results.failed.push({ row: i + 2, code: dto.employeeCode, reason: e.message ?? 'خطأ غير معروف' });
+      }
+    }
+    return results;
   }
 
   async findAll(

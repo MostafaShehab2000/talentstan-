@@ -14,6 +14,7 @@ import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
   UpdateFcmTokenDto,
+  BulkImportEmployeeDto,
 } from './dto/employee.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,6 +33,13 @@ export class EmployeesController {
   @ApiOperation({ summary: 'إضافة موظف جديد' })
   create(@TenantId() tenantId: string, @Body() dto: CreateEmployeeDto) {
     return this.employeesService.create(tenantId, dto);
+  }
+
+  @Post('bulk')
+  @Roles('hr_admin')
+  @ApiOperation({ summary: 'استيراد موظفين من Excel (Bulk)' })
+  bulkImport(@TenantId() tenantId: string, @Body() dto: BulkImportEmployeeDto) {
+    return this.employeesService.bulkImport(tenantId, dto.employees);
   }
 
   @Get()

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Building2, Users, FolderTree, GitBranch,
   CalendarDays, Briefcase, MessageSquare, HelpCircle,
-  FileText, ClipboardList, BarChart3, Settings, LogOut,
+  FileText, ClipboardList, BarChart3, TrendingUp, Settings, LogOut,
 } from 'lucide-react';
 import { clearSession } from '@/lib/auth';
 
@@ -24,6 +24,7 @@ const adminNav: NavItem[] = [
   { href: '/admin', label: 'لوحة التحكم', icon: <LayoutDashboard size={18} /> },
   { href: '/admin/employees', label: 'الموظفون', icon: <Users size={18} /> },
   { href: '/admin/departments', label: 'الأقسام', icon: <FolderTree size={18} /> },
+  { href: '/admin/job-titles', label: 'المسميات الوظيفية', icon: <Briefcase size={18} /> },
   { href: '/admin/workflow', label: 'مسارات الموافقة', icon: <GitBranch size={18} /> },
   { href: '/admin/leave', label: 'الإجازات', icon: <CalendarDays size={18} /> },
   { href: '/admin/recruitment', label: 'التوظيف', icon: <Briefcase size={18} /> },
@@ -32,6 +33,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/surveys', label: 'الاستطلاعات', icon: <ClipboardList size={18} /> },
   { href: '/admin/appraisal', label: 'التقييمات', icon: <BarChart3 size={18} /> },
   { href: '/admin/communication', label: 'التواصل الداخلي', icon: <MessageSquare size={18} /> },
+  { href: '/admin/reports', label: 'التقارير', icon: <TrendingUp size={18} /> },
 ];
 
 export function Sidebar({ type }: { type: 'super-admin' | 'admin' }) {

@@ -20,22 +20,25 @@ export class AuthService {
   async login(dto: LoginDto) {
     const { identifier, password, tenantId } = dto;
 
-    const tenant = await this.prisma.tenant.findFirst({
-      where: { id: tenantId, status: 'active' },
-    });
-
-    if (!tenant) {
-      throw new UnauthorizedException('الشركة غير موجودة أو الاشتراك منتهي');
-    }
-
+    // البحث عن الموظف — لو tenantId موجود نفلتر عليه، لو لأ نبحث بالإيميل في كل الشركات
     const employee = await this.prisma.employee.findFirst({
       where: {
-        tenantId,
         status: 'active',
-        OR: [{ employeeCode: identifier }, { email: identifier }],
+        ...(tenantId ? { tenantId } : {}),
+        OR: [{ email: identifier }, { employeeCode: identifier }],
       },
-      include: { roles: true },
+      include: { roles: true, tenant: true },
     });
+
+    if (!employee || !employee.passwordHash) {
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    // التأكد إن الشركة نشطة
+    const tenant = employee.tenant;
+    if (!tenant || tenant.status !== 'active') {
+      throw new UnauthorizedException('الشركة غير موجودة أو الاشتراك منتهي');
+    }
 
     if (!employee || !employee.passwordHash) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
@@ -83,11 +86,12 @@ export class AuthService {
         secret: this.configService.get('JWT_REFRESH_SECRET'),
       });
 
-      const newPayload = {
+      const newPayload: any = {
         sub: payload.sub,
         tenantId: payload.tenantId,
         roles: payload.roles,
       };
+      if (payload.isSuperAdmin) newPayload.isSuperAdmin = true;
 
       return {
         accessToken: this.jwtService.sign(newPayload),

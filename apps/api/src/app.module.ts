@@ -13,6 +13,9 @@ import { HelpdeskModule } from './modules/helpdesk/helpdesk.module';
 import { PayslipModule } from './modules/payslip/payslip.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { AppraisalModule } from './modules/appraisal/appraisal.module';
+import { JobTitlesModule } from './modules/job-titles/job-titles.module';
+import { PermissionPolicyModule } from './modules/permission-policy/permission-policy.module';
+import { OtherRequestsModule } from './modules/other-requests/other-requests.module';
 
 @Module({
   imports: [
@@ -22,6 +25,7 @@ import { AppraisalModule } from './modules/appraisal/appraisal.module';
     TenantsModule,
     EmployeesModule,
     DepartmentsModule,
+    JobTitlesModule,
     WorkflowModule,
     LeaveModule,
     RecruitmentModule,
@@ -30,6 +34,8 @@ import { AppraisalModule } from './modules/appraisal/appraisal.module';
     PayslipModule,
     SurveysModule,
     AppraisalModule,
+    PermissionPolicyModule,
+    OtherRequestsModule,
   ],
 })
 export class AppModule {}

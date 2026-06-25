@@ -1,8 +1,8 @@
-import { IsString, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
-  @ApiProperty({ example: 'EMP001', description: 'كود الموظف أو البريد الإلكتروني' })
+  @ApiProperty({ example: 'you@company.com', description: 'البريد الإلكتروني أو كود الموظف' })
   @IsString()
   @IsNotEmpty()
   identifier: string;
@@ -12,10 +12,10 @@ export class LoginDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ example: 'tenant-uuid', description: 'معرّف الشركة' })
+  @ApiPropertyOptional({ example: 'tenant-uuid', description: 'معرّف الشركة (اختياري — يُستخدم لو نفس الإيميل في أكثر من شركة)' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  tenantId: string;
+  tenantId?: string;
 }
 
 export class RefreshTokenDto {

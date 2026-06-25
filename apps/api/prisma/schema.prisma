@@ -63,6 +63,8 @@ model Tenant {
   workflowInstances  WorkflowInstance[]
   auditLogs          AuditLog[]
   notifications      Notification[]
+  permissionPolicy   PermissionPolicy?
+  otherRequests      OtherRequest[]
 
   @@map("tenants")
 }
@@ -190,6 +192,7 @@ model Employee {
   jobDescriptionsUpdated       JobDescription[]           @relation("JDUpdater")
   importBatches                ImportBatch[]
   surveysCreated               Survey[]
+  otherRequests                OtherRequest[]
 
   @@unique([tenantId, employeeCode])
   @@map("employees")
@@ -386,6 +389,9 @@ model LeaveRequest {
   totalHours         Decimal?
   reason             String?
   attachmentUrl      String?
+  destination        String?
+  purpose            String?
+  missionAllowance   Decimal?
   status             RequestStatus @default(submitted)
   workflowInstanceId String?
   createdAt          DateTime      @default(now())
@@ -460,6 +466,7 @@ model Post {
   targetScope         TargetScope @default(company)
   targetDepartmentIds String[]
   isPinned            Boolean     @default(false)
+  commentsEnabled     Boolean     @default(true)
   publishAt           DateTime?
   expiresAt           DateTime?
   createdAt           DateTime    @default(now())
@@ -967,6 +974,57 @@ model AuditLog {
   tenant Tenant? @relation(fields: [tenantId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────
+// PERMISSION POLICY (الأذونات الشهرية)
+// ─────────────────────────────────────────
+
+model PermissionPolicy {
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  maxHoursPerMonth Decimal  @default(4)
+  maxTimesPerMonth Int      @default(4)
+  monthStartDay    Int      @default(1)
+  isActive         Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("permission_policies")
+}
+
+// ─────────────────────────────────────────
+// OTHER REQUESTS (طلبات أخرى)
+// ─────────────────────────────────────────
+
+enum OtherRequestType {
+  permission
+  mission
+  hr_letter
+  experience_letter
+  mobile_line
+  salary_certificate
+  bank_letter
+  other
+}
+
+model OtherRequest {
+  id         String           @id @default(uuid())
+  tenantId   String
+  employeeId String
+  type       OtherRequestType
+  details    String?
+  copies     Int              @default(1)
+  status     RequestStatus    @default(submitted)
+  adminNote  String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("other_requests")
 }
 
 // ─────────────────────────────────────────

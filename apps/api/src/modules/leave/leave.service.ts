@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { WorkflowService } from '../workflow/workflow.service';
+import { PermissionPolicyService } from '../permission-policy/permission-policy.service';
 import {
   CreateLeaveTypeDto,
   UpdateLeaveTypeDto,
@@ -23,6 +24,7 @@ export class LeaveService {
   constructor(
     private prisma: PrismaService,
     private workflowService: WorkflowService,
+    private permissionPolicyService: PermissionPolicyService,
   ) {}
 
   // ════════════════════════════════════
@@ -176,6 +178,15 @@ export class LeaveService {
       totalDays = 1;
     }
 
+    // التحقق من حصة الأذونات الشهرية
+    if (leaveType.category === 'permission' && totalHours) {
+      try {
+        await this.permissionPolicyService.checkQuota(tenantId, employeeId, totalHours);
+      } catch (e: any) {
+        throw new BadRequestException(e.message);
+      }
+    }
+
     // التحقق من حد الإشعار المسبق
     if (leaveType.advanceNoticeDays) {
       const today = new Date();
@@ -225,6 +236,9 @@ export class LeaveService {
         totalHours,
         reason: dto.reason,
         attachmentUrl: dto.attachmentUrl,
+        destination: (dto as any).destination,
+        purpose: (dto as any).purpose,
+        missionAllowance: (dto as any).missionAllowance,
         status: 'submitted',
       },
       include: { leaveType: true, employee: { select: { fullName: true } } },

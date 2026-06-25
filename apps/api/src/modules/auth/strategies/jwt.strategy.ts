@@ -25,6 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    console.log('[JWT validate]', JSON.stringify(payload));
     if (payload.isSuperAdmin) {
       return { id: payload.sub, roles: payload.roles, isSuperAdmin: true };
     }

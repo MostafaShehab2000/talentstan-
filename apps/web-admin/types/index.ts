@@ -1,10 +1,16 @@
 export interface Tenant {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
+  type: string;
   status: string;
   maxEmployees: number;
-  subscriptionExpiresAt: string;
+  subscriptionPlan: string;
+  subscriptionStart?: string;
+  subscriptionEnd?: string;
+  timezone?: string;
+  logoUrl?: string;
+  primaryColor?: string;
   createdAt: string;
   _count?: { employees: number };
 }

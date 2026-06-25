@@ -1,15 +1,15 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
-import { getUser } from '@/lib/auth';
-import { cn } from '@/lib/utils';
+import { getUser, AuthUser } from '@/lib/auth';
 
-// Re-export getInitials for use in this component
 function initials(name: string) {
   return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 export function Topbar({ title }: { title?: string }) {
-  const user = typeof window !== 'undefined' ? getUser() : null;
+  const [user, setUser] = useState<AuthUser | null>(null);
+  useEffect(() => { setUser(getUser()); }, []);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
