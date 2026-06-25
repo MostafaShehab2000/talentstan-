@@ -1,16 +1,19 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { FcmService } from '../../common/notifications/fcm.service';
 import { CreatePayslipDto, PayslipFilterDto } from './dto/payslip.dto';
+
+const MONTHS = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 @Injectable()
 export class PayslipService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private fcm: FcmService) {}
 
   async uploadPayslip(tenantId: string, uploadedById: string, dto: CreatePayslipDto) {
     const employee = await this.prisma.employee.findFirst({ where: { id: dto.employeeId, tenantId } });
     if (!employee) throw new NotFoundException('الموظف غير موجود');
 
-    return this.prisma.payslip.upsert({
+    const payslip = await this.prisma.payslip.upsert({
       where: { employeeId_month_year: { employeeId: dto.employeeId, month: dto.month, year: dto.year } },
       create: {
         tenantId,
@@ -33,6 +36,16 @@ export class PayslipService {
         uploadedById,
       },
     });
+
+    if (employee.fcmToken) {
+      const monthName = MONTHS[dto.month] ?? '';
+      await this.fcm.send(
+        employee.fcmToken,
+        '💰 كشف راتب جديد',
+        `تم رفع كشف راتب ${monthName} ${dto.year} — صافي: ${dto.netSalary} جنيه`,
+      );
+    }
+    return payslip;
   }
 
   async bulkUpload(tenantId: string, uploadedById: string, payslips: CreatePayslipDto[]) {

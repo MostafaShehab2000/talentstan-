@@ -16,10 +16,12 @@ import { AppraisalModule } from './modules/appraisal/appraisal.module';
 import { JobTitlesModule } from './modules/job-titles/job-titles.module';
 import { PermissionPolicyModule } from './modules/permission-policy/permission-policy.module';
 import { OtherRequestsModule } from './modules/other-requests/other-requests.module';
+import { FcmModule } from './common/notifications/fcm.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    FcmModule,
     PrismaModule,
     AuthModule,
     TenantsModule,

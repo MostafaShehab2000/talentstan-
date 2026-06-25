@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { FcmService } from '../../common/notifications/fcm.service';
 import { WorkflowService } from '../workflow/workflow.service';
 import { PermissionPolicyService } from '../permission-policy/permission-policy.service';
 import {
@@ -25,6 +26,7 @@ export class LeaveService {
     private prisma: PrismaService,
     private workflowService: WorkflowService,
     private permissionPolicyService: PermissionPolicyService,
+    private fcm: FcmService,
   ) {}
 
   // ════════════════════════════════════
@@ -473,17 +475,29 @@ export class LeaveService {
   }
 
   async approveRequest(tenantId: string, id: string, managerId: string) {
-    const req = await this.prisma.leaveRequest.findFirst({ where: { id, tenantId } });
+    const req = await this.prisma.leaveRequest.findFirst({
+      where: { id, tenantId },
+      include: { employee: { select: { fcmToken: true, fullName: true } }, leaveType: true },
+    });
     if (!req) throw new NotFoundException('الطلب غير موجود');
     await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'approved' } });
-    if (req.leaveType) await this.onRequestApproved(id);
+    await this.onRequestApproved(id);
+    if (req.employee?.fcmToken) {
+      await this.fcm.send(req.employee.fcmToken, '✅ تمت الموافقة على طلبك', `تمت الموافقة على طلب ${req.leaveType?.name ?? 'الإجازة'}`);
+    }
     return { success: true };
   }
 
   async rejectRequest(tenantId: string, id: string, managerId: string, note?: string) {
-    const req = await this.prisma.leaveRequest.findFirst({ where: { id, tenantId } });
+    const req = await this.prisma.leaveRequest.findFirst({
+      where: { id, tenantId },
+      include: { employee: { select: { fcmToken: true } }, leaveType: true },
+    });
     if (!req) throw new NotFoundException('الطلب غير موجود');
     await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'rejected' } });
+    if (req.employee?.fcmToken) {
+      await this.fcm.send(req.employee.fcmToken, '❌ تم رفض طلبك', `تم رفض طلب ${req.leaveType?.name ?? 'الإجازة'}${note ? ': ' + note : ''}`);
+    }
     return { success: true };
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 import '../../core/theme.dart';
+import '../../core/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() { _loading = true; _error = null; });
     final err = await context.read<AuthProvider>().login(_idCtrl.text.trim(), _pwCtrl.text);
     if (mounted) setState(() { _loading = false; _error = err; });
+    if (err == null) NotificationService.instance.init();
   }
 
   @override
