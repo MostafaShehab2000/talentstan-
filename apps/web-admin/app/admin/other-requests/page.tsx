@@ -128,7 +128,7 @@ export default function OtherRequestsPage() {
             {isLoading ? (
               <Tr><Td colSpan={6} className="text-center py-8 text-gray-400">جاري التحميل...</Td></Tr>
             ) : requests.length === 0 ? (
-              <Tr><Td colSpan={6}><EmptyState title="لا توجد طلبات" /></Td></Tr>
+              <Tr><Td colSpan={6}><EmptyState message="لا توجد طلبات" /></Td></Tr>
             ) : requests.map(r => {
               const statusInfo = STATUS_LABELS[r.status] ?? { label: r.status, color: 'bg-gray-100 text-gray-600' };
               return (
