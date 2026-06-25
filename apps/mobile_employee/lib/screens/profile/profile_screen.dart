@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/provider.dart';
 import '../../core/auth_provider.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../../core/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -128,6 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Settings
       _FbSection(children: [
+        _DarkModeRow(),
         _SettingRow(icon: Icons.lock_outline, label: 'تغيير كلمة المرور', color: kPrimary, onTap: () => _showChangePassword(context)),
         _SettingRow(icon: Icons.help_outline, label: 'الدعم الفني', color: kTextSub, onTap: () {}),
         _SettingRow(icon: Icons.logout, label: 'تسجيل الخروج', color: kDanger, onTap: () => _confirmLogout(context)),
@@ -299,6 +302,24 @@ class _InfoRow extends StatelessWidget {
       ]),
     ]),
   );
+}
+
+class _DarkModeRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final tp = context.watch<ThemeProvider>();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(children: [
+        Container(width: 36, height: 36,
+          decoration: BoxDecoration(color: const Color(0xFF1A1D27).withAlpha(15), shape: BoxShape.circle),
+          child: const Icon(Icons.dark_mode_outlined, color: Color(0xFF1A1D27), size: 18)),
+        const SizedBox(width: 14),
+        const Expanded(child: Text('الوضع الداكن', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kText))),
+        Switch(value: tp.isDark, onChanged: (_) => tp.toggle(), activeColor: kPrimary),
+      ]),
+    );
+  }
 }
 
 class _SettingRow extends StatelessWidget {

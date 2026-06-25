@@ -16,63 +16,97 @@ const kDangerLight  = Color(0xFFFEE2E2);
 const kPurple       = Color(0xFF7C3AED);
 const kPurpleLight  = Color(0xFFEDE9FE);
 
-ThemeData buildTheme() {
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(seedColor: kPrimary, brightness: Brightness.light),
-    scaffoldBackgroundColor: kSurface,
-    fontFamily: 'Cairo',
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
-      foregroundColor: kText,
-      elevation: 0,
-      scrolledUnderElevation: 0.5,
-      shadowColor: Color(0x22000000),
-      titleTextStyle: TextStyle(color: kText, fontSize: 17, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: kSurface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kBorder)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kBorder)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kPrimary, width: 1.5)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      labelStyle: const TextStyle(color: kTextSub, fontSize: 14),
-      hintStyle: const TextStyle(color: kTextSub, fontSize: 14),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: kPrimary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
-      ),
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Colors.white,
-      selectedItemColor: kPrimary,
-      unselectedItemColor: kTextSub,
-      type: BottomNavigationBarType.fixed,
-      elevation: 0,
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
-      unselectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w400, fontFamily: 'Cairo'),
-    ),
-    dividerTheme: const DividerThemeData(color: kBorder, thickness: 1, space: 0),
-    tabBarTheme: const TabBarThemeData(
-      labelColor: kPrimary,
-      unselectedLabelColor: kTextSub,
-      indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
-      unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'Cairo'),
-    ),
-  );
+ThemeData buildTheme({bool dark = false}) {
+  if (dark) return _darkTheme();
+  return _lightTheme();
 }
+
+ThemeData _lightTheme() => ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.light,
+  colorScheme: ColorScheme.fromSeed(seedColor: kPrimary, brightness: Brightness.light),
+  scaffoldBackgroundColor: kSurface,
+  fontFamily: 'Cairo',
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.white,
+    foregroundColor: kText,
+    elevation: 0,
+    scrolledUnderElevation: 0.5,
+    shadowColor: Color(0x22000000),
+    titleTextStyle: TextStyle(color: kText, fontSize: 17, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+  ),
+  cardTheme: CardThemeData(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), color: Colors.white),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true, fillColor: kSurface,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kBorder)),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kBorder)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kPrimary, width: 1.5)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    labelStyle: const TextStyle(color: kTextSub, fontSize: 14),
+    hintStyle: const TextStyle(color: kTextSub, fontSize: 14),
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(
+    backgroundColor: kPrimary, foregroundColor: Colors.white, elevation: 0,
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+  )),
+  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    backgroundColor: Colors.white, selectedItemColor: kPrimary, unselectedItemColor: kTextSub,
+    type: BottomNavigationBarType.fixed, elevation: 0,
+    showSelectedLabels: true, showUnselectedLabels: true,
+    selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+    unselectedLabelStyle: TextStyle(fontSize: 10, fontFamily: 'Cairo'),
+  ),
+  dividerTheme: const DividerThemeData(color: kBorder, thickness: 1, space: 0),
+  tabBarTheme: const TabBarThemeData(
+    labelColor: kPrimary, unselectedLabelColor: kTextSub, indicatorSize: TabBarIndicatorSize.label,
+    labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+    unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'Cairo'),
+  ),
+);
+
+ThemeData _darkTheme() => ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  colorScheme: ColorScheme.fromSeed(seedColor: kPrimary, brightness: Brightness.dark),
+  scaffoldBackgroundColor: const Color(0xFF0F1117),
+  fontFamily: 'Cairo',
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Color(0xFF1A1D27),
+    foregroundColor: Colors.white,
+    elevation: 0,
+    scrolledUnderElevation: 0.5,
+    shadowColor: Colors.black26,
+    titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+  ),
+  cardTheme: CardThemeData(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), color: const Color(0xFF1A1D27)),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true, fillColor: const Color(0xFF1A1D27),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF2D3142))),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF2D3142))),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: kPrimary, width: 1.5)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    labelStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+    hintStyle: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(
+    backgroundColor: kPrimary, foregroundColor: Colors.white, elevation: 0,
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+  )),
+  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    backgroundColor: Color(0xFF1A1D27), selectedItemColor: kPrimary, unselectedItemColor: Color(0xFF6B7280),
+    type: BottomNavigationBarType.fixed, elevation: 0,
+    showSelectedLabels: true, showUnselectedLabels: true,
+    selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+    unselectedLabelStyle: TextStyle(fontSize: 10, fontFamily: 'Cairo'),
+  ),
+  dividerTheme: const DividerThemeData(color: Color(0xFF2D3142), thickness: 1, space: 0),
+  tabBarTheme: const TabBarThemeData(
+    labelColor: kPrimary, unselectedLabelColor: Color(0xFF6B7280), indicatorSize: TabBarIndicatorSize.label,
+    labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
+    unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, fontFamily: 'Cairo'),
+  ),
+);

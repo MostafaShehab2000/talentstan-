@@ -10,6 +10,7 @@ import '../communication/communication_screen.dart';
 import '../attendance/attendance_screen.dart';
 import '../manager/manager_screen.dart';
 import '../appraisal/appraisal_screen.dart';
+import '../chat/chat_screen.dart';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ class HomeShellState extends State<HomeShell> {
       _HomeTab(key: const ValueKey('home')),
       const CommunicationScreen(),
       LeaveScreen(key: _leaveKey),
-      if (isManager) const ManagerScreen() else const _CommunityPlaceholder(),
+      if (isManager) const ManagerScreen() else const ChatScreen(),
       const ProfileScreen(),
     ];
 
@@ -76,9 +77,9 @@ class HomeShellState extends State<HomeShell> {
             const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded, size: 24), activeIcon: Icon(Icons.chat_bubble_rounded, size: 24), label: 'الرسائل'),
             const BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 24), activeIcon: Icon(Icons.assignment_rounded, size: 24), label: 'الطلبات'),
             BottomNavigationBarItem(
-              icon: _BadgeIcon(icon: isManager ? Icons.supervisor_account_outlined : Icons.people_outline_rounded, count: isManager ? _pendingCount : 0),
-              activeIcon: Icon(isManager ? Icons.supervisor_account_rounded : Icons.people_rounded, size: 24),
-              label: isManager ? 'الفريق' : 'المجتمع',
+              icon: _BadgeIcon(icon: isManager ? Icons.supervisor_account_outlined : Icons.chat_bubble_outline_rounded, count: isManager ? _pendingCount : 0),
+              activeIcon: Icon(isManager ? Icons.supervisor_account_rounded : Icons.chat_bubble_rounded, size: 24),
+              label: isManager ? 'الفريق' : 'الشات',
             ),
             const BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded, size: 24), activeIcon: Icon(Icons.person_rounded, size: 24), label: 'الملف الشخصي'),
           ],

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/auth_provider.dart';
 import 'core/theme.dart';
+import 'core/theme_provider.dart';
 import 'core/notification_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -16,6 +17,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const TalentStanApp(),
     ),
@@ -27,10 +29,13 @@ class TalentStanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDark;
     return MaterialApp(
       title: 'Talentstan',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
+      theme: buildTheme(dark: false),
+      darkTheme: buildTheme(dark: true),
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       locale: const Locale('ar'),
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
