@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-const String kBaseUrl = 'http://10.0.2.2:3000/api'; // Android emulator → localhost
-// For real device use your machine IP: 'http://192.168.x.x:3000/api'
+const String kBaseUrl = 'https://talentstan-production.up.railway.app/api';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -14,8 +13,8 @@ class ApiClient {
   ApiClient._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: kBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 12),
       headers: {'Content-Type': 'application/json'},
     ));
 

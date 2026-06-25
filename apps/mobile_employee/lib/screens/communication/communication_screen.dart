@@ -45,12 +45,6 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
     appBar: AppBar(
       backgroundColor: Colors.white,
       title: const Text('التواصل', style: TextStyle(fontWeight: FontWeight.w800, color: kText, fontSize: 18)),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.edit_square, color: kPrimary),
-          onPressed: _showNewPost,
-        ),
-      ],
       bottom: TabBar(
         controller: _tabs,
         tabs: [
@@ -67,7 +61,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
         : TabBarView(
             controller: _tabs,
             children: [
-              _FeedTab(posts: _posts, onRefresh: _load, onNewPost: _showNewPost),
+              _FeedTab(posts: _posts, onRefresh: _load),
               _BirthdaysTab(birthdays: _birthdays, onRefresh: _load),
             ],
           ),
@@ -139,19 +133,17 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
 class _FeedTab extends StatelessWidget {
   final List<dynamic> posts;
   final Future<void> Function() onRefresh;
-  final VoidCallback onNewPost;
-  const _FeedTab({required this.posts, required this.onRefresh, required this.onNewPost});
+  const _FeedTab({required this.posts, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
-    if (posts.isEmpty) return Center(
+    if (posts.isEmpty) return const Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 80, height: 80, decoration: const BoxDecoration(color: kSurface, shape: BoxShape.circle),
-          child: const Icon(Icons.campaign_outlined, size: 40, color: kTextSub)),
-        const SizedBox(height: 16),
-        const Text('لا توجد إعلانات حالياً', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kText)),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(onPressed: onNewPost, icon: const Icon(Icons.add), label: const Text('أضف منشور')),
+        Icon(Icons.campaign_outlined, size: 64, color: kBorder),
+        SizedBox(height: 12),
+        Text('لا توجد إعلانات حالياً', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kText)),
+        SizedBox(height: 6),
+        Text('ستظهر هنا إعلانات الشركة', style: TextStyle(fontSize: 13, color: kTextSub)),
       ]),
     );
 
