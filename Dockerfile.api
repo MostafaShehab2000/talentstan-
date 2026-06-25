@@ -4,7 +4,6 @@ COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 RUN npm ci --ignore-scripts
 COPY apps/api ./apps/api
-COPY packages ./packages
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN cd apps/api && npx nest build
 
