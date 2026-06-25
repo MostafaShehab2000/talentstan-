@@ -44,10 +44,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async groupMessage(@ConnectedSocket() client: Socket, @MessageBody() data: { groupId: string; content: string }) {
     const { groupId, content } = data;
     const msg = await this.prisma.chatMessage.create({
-      data: { senderId: client.data.userId, groupId, content },
+      data: { senderId: client.data.userId, chatGroupId: groupId, messageText: content },
       include: { sender: { select: { id: true, fullName: true, profilePhotoUrl: true } } },
     });
-    this.server.to(`group:${groupId}`).emit('new_message', msg);
+    this.server.to(`group:${groupId}`).emit('new_message', { ...msg, groupId, content });
     return msg;
   }
 
@@ -55,10 +55,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async dmMessage(@ConnectedSocket() client: Socket, @MessageBody() data: { recipientId: string; content: string }) {
     const { recipientId, content } = data;
     const msg = await this.prisma.chatMessage.create({
-      data: { senderId: client.data.userId, recipientId, content },
+      data: { senderId: client.data.userId, receiverId: recipientId, messageText: content },
       include: { sender: { select: { id: true, fullName: true, profilePhotoUrl: true } } },
     });
-    this.server.to(`user:${recipientId}`).to(`user:${client.data.userId}`).emit('new_dm', msg);
+    this.server.to(`user:${recipientId}`).to(`user:${client.data.userId}`).emit('new_dm', { ...msg, recipientId, content });
     return msg;
   }
 }

@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import * as admin from 'firebase-admin';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const firebaseAdmin = require('firebase-admin');
 
 @Injectable()
 export class FcmService implements OnModuleInit {
@@ -13,9 +15,9 @@ export class FcmService implements OnModuleInit {
       return;
     }
     try {
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
+      if (!firebaseAdmin.apps.length) {
+        firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert(JSON.parse(serviceAccountJson)),
         });
       }
       this.initialized = true;
@@ -28,7 +30,7 @@ export class FcmService implements OnModuleInit {
   async send(token: string, title: string, body: string, data?: Record<string, string>) {
     if (!this.initialized || !token) return;
     try {
-      await admin.messaging().send({
+      await firebaseAdmin.messaging().send({
         token,
         notification: { title, body },
         data,

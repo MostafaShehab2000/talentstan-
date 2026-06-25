@@ -258,7 +258,7 @@ export class EmployeesService {
     const employees = await this.prisma.employee.findMany({
       where: { tenantId, status: 'active', hireDate: { not: null } },
       select: { id: true, fullName: true, profilePhotoUrl: true, hireDate: true,
-        jobTitle: { select: { name: true } }, department: { select: { name: true } } },
+        jobTitle: { select: { title: true } }, department: { select: { name: true } } },
     });
 
     const today = new Date();
@@ -280,14 +280,6 @@ export class EmployeesService {
       .sort((a, b) => a.birthdayThisYear.getTime() - b.birthdayThisYear.getTime());
   }
 
-  async updateFcmToken(id: string, fcmToken: string) {
-    return this.prisma.employee.update({
-      where: { id },
-      data: { fcmToken },
-      select: { id: true },
-    });
-  }
-
   async updateMyProfile(id: string, body: { phone?: string; email?: string; birthDate?: string; nationalId?: string; address?: string }) {
     const data: any = {};
     if (body.phone)      data.phone      = body.phone;
@@ -298,7 +290,7 @@ export class EmployeesService {
     return this.prisma.employee.update({
       where: { id },
       data,
-      select: { id: true, fullName: true, phone: true, email: true, birthDate: true, nationalId: true, address: true },
+      select: { id: true, fullName: true, phone: true, email: true } as any,
     });
   }
 }
