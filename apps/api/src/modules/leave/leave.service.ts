@@ -474,29 +474,59 @@ export class LeaveService {
     return { data: requests, summary: { totalRequests: requests.length, totalDays, totalHours } };
   }
 
+  // ─── Manager: الموافقة الأولى → in_review ───
   async approveRequest(tenantId: string, id: string, managerId: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, status: 'submitted' },
       include: { employee: { select: { fcmToken: true, fullName: true } }, leaveType: true },
     });
-    if (!req) throw new NotFoundException('الطلب غير موجود');
-    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'approved' } });
-    await this.onRequestApproved(id);
+    if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعد في انتظار موافقتك');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'in_review' } });
     if (req.employee?.fcmToken) {
-      await this.fcm.send(req.employee.fcmToken, '✅ تمت الموافقة على طلبك', `تمت الموافقة على طلب ${req.leaveType?.name ?? 'الإجازة'}`);
+      await this.fcm.send(req.employee.fcmToken, '✅ وافق مديرك على طلبك', `وافق المدير على طلب ${req.leaveType?.name ?? 'الإجازة'} — في انتظار اعتماد HR`);
     }
     return { success: true };
   }
 
+  // ─── Manager: الرفض ───
   async rejectRequest(tenantId: string, id: string, managerId: string, note?: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, status: 'submitted' },
       include: { employee: { select: { fcmToken: true } }, leaveType: true },
     });
     if (!req) throw new NotFoundException('الطلب غير موجود');
     await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'rejected' } });
     if (req.employee?.fcmToken) {
-      await this.fcm.send(req.employee.fcmToken, '❌ تم رفض طلبك', `تم رفض طلب ${req.leaveType?.name ?? 'الإجازة'}${note ? ': ' + note : ''}`);
+      await this.fcm.send(req.employee.fcmToken, '❌ رفض مديرك طلبك', `تم رفض طلب ${req.leaveType?.name ?? 'الإجازة'}${note ? ': ' + note : ''}`);
+    }
+    return { success: true };
+  }
+
+  // ─── HR: الاعتماد النهائي ───
+  async hrApproveRequest(tenantId: string, id: string) {
+    const req = await this.prisma.leaveRequest.findFirst({
+      where: { id, tenantId, status: 'in_review' },
+      include: { employee: { select: { fcmToken: true } }, leaveType: true },
+    });
+    if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعتمده المدير بعد');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'approved' } });
+    await this.onRequestApproved(id);
+    if (req.employee?.fcmToken) {
+      await this.fcm.send(req.employee.fcmToken, '🎉 اعتمدت HR طلبك', `تمت الموافقة النهائية على طلب ${req.leaveType?.name ?? 'الإجازة'}`);
+    }
+    return { success: true };
+  }
+
+  // ─── HR: الرفض النهائي ───
+  async hrRejectRequest(tenantId: string, id: string, note?: string) {
+    const req = await this.prisma.leaveRequest.findFirst({
+      where: { id, tenantId, status: 'in_review' },
+      include: { employee: { select: { fcmToken: true } }, leaveType: true },
+    });
+    if (!req) throw new NotFoundException('الطلب غير موجود');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'rejected' } });
+    if (req.employee?.fcmToken) {
+      await this.fcm.send(req.employee.fcmToken, '❌ رفضت HR طلبك', `${note ?? 'تم رفض طلبك من قِبل HR'}`);
     }
     return { success: true };
   }

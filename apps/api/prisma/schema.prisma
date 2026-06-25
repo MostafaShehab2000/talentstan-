@@ -160,6 +160,9 @@ model Employee {
   status          EmployeeStatus @default(active)
   profilePhotoUrl String?
   fcmToken        String?
+  birthDate       DateTime?
+  nationalId      String?
+  address         String?
   createdAt       DateTime       @default(now())
 
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1001,11 +1004,13 @@ model PermissionPolicy {
 enum OtherRequestType {
   permission
   mission
+  advance
   hr_letter
   experience_letter
   mobile_line
   salary_certificate
   bank_letter
+  data_change
   other
 }
 

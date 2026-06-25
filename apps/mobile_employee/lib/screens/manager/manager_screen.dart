@@ -19,7 +19,8 @@ class _ManagerScreenState extends State<ManagerScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiClient().dio.get('/leave/requests/pending-my-approval');
+      final res = await ApiClient().dio.get('/leave/requests/pending-my-approval',
+          queryParameters: {'status': 'submitted'});
       if (mounted) setState(() {
         _pending = res.data is List ? res.data : (res.data['data'] ?? []);
         _loading = false;

@@ -39,6 +39,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shadowColor: const Color(0x22000000),
         title: const Text('ملفي الشخصي', style: TextStyle(fontWeight: FontWeight.w800, color: kText)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: kPrimary),
+            onPressed: () => _showEditProfile(context),
+            tooltip: 'تعديل البيانات',
+          ),
           TextButton.icon(
             onPressed: () => _confirmLogout(context),
             icon: const Icon(Icons.logout, size: 18, color: kDanger),
@@ -130,6 +135,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: 80),
     ],
   );
+
+  void _showEditProfile(BuildContext context) {
+    final phoneCtrl   = TextEditingController(text: _profile?['phone']      ?? '');
+    final emailCtrl   = TextEditingController(text: _profile?['email']      ?? '');
+    final birthCtrl   = TextEditingController(text: _profile?['birthDate'] != null ? (_profile!['birthDate'] as String).substring(0, 10) : '');
+    final natCtrl     = TextEditingController(text: _profile?['nationalId'] ?? '');
+    final addressCtrl = TextEditingController(text: _profile?['address']    ?? '');
+    bool saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('تعديل البيانات الشخصية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+            ]),
+            const SizedBox(height: 4),
+            const Text('البيانات القابلة للتعديل فقط', style: TextStyle(fontSize: 12, color: kTextSub)),
+            const SizedBox(height: 16),
+            TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined)), keyboardType: TextInputType.phone),
+            const SizedBox(height: 12),
+            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.mail_outline)), keyboardType: TextInputType.emailAddress),
+            const SizedBox(height: 12),
+            TextField(
+              controller: birthCtrl,
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'تاريخ الميلاد', prefixIcon: Icon(Icons.cake_outlined)),
+              onTap: () async {
+                final d = await showDatePicker(context: ctx, initialDate: DateTime(1990), firstDate: DateTime(1950), lastDate: DateTime.now());
+                if (d != null) birthCtrl.text = d.toIso8601String().substring(0, 10);
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: natCtrl, decoration: const InputDecoration(labelText: 'الرقم القومي', prefixIcon: Icon(Icons.badge_outlined))),
+            const SizedBox(height: 12),
+            TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'العنوان', prefixIcon: Icon(Icons.home_outlined)), maxLines: 2),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: saving ? null : () async {
+                setS(() => saving = true);
+                try {
+                  await ApiClient().dio.patch('/employees/me/profile', data: {
+                    if (phoneCtrl.text.isNotEmpty)   'phone':      phoneCtrl.text,
+                    if (emailCtrl.text.isNotEmpty)   'email':      emailCtrl.text,
+                    if (birthCtrl.text.isNotEmpty)   'birthDate':  birthCtrl.text,
+                    if (natCtrl.text.isNotEmpty)     'nationalId': natCtrl.text,
+                    if (addressCtrl.text.isNotEmpty) 'address':    addressCtrl.text,
+                  });
+                  if (ctx.mounted) { Navigator.pop(ctx); _load(); }
+                } catch (_) {
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('حدث خطأ')));
+                } finally {
+                  setS(() => saving = false);
+                }
+              },
+              child: saving ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2) : const Text('حفظ التغييرات'),
+            ),
+          ])),
+        ),
+      ),
+    );
+  }
 
   void _confirmLogout(BuildContext context) {
     showDialog(context: context, builder: (_) => AlertDialog(

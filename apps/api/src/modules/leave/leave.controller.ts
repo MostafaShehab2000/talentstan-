@@ -138,7 +138,7 @@ export class LeaveController {
 
   @Patch('requests/:id/reject')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'رفض طلب (Manager/HR)' })
+  @ApiOperation({ summary: 'رفض طلب (Manager)' })
   rejectRequest(
     @TenantId() tenantId: string,
     @CurrentUser() user: any,
@@ -146,6 +146,22 @@ export class LeaveController {
     @Body('note') note?: string,
   ) {
     return this.leaveService.rejectRequest(tenantId, id, user.id, note);
+  }
+
+  @Patch('requests/:id/hr-approve')
+  @Roles('hr_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'اعتماد نهائي HR' })
+  hrApprove(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.leaveService.hrApproveRequest(tenantId, id);
+  }
+
+  @Patch('requests/:id/hr-reject')
+  @Roles('hr_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'رفض نهائي HR' })
+  hrReject(@TenantId() tenantId: string, @Param('id') id: string, @Body('note') note?: string) {
+    return this.leaveService.hrRejectRequest(tenantId, id, note);
   }
 
   @Get('requests/:id')

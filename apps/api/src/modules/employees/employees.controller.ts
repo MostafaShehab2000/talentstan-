@@ -99,10 +99,13 @@ export class EmployeesController {
 
   @Patch('me/fcm-token')
   @ApiOperation({ summary: 'تحديث FCM Token للإشعارات' })
-  updateFcmToken(
-    @CurrentUser() user: any,
-    @Body() dto: UpdateFcmTokenDto,
-  ) {
+  updateFcmToken(@CurrentUser() user: any, @Body() dto: UpdateFcmTokenDto) {
     return this.employeesService.updateFcmToken(user.id, dto.fcmToken);
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({ summary: 'تعديل الملف الشخصي (الموظف)' })
+  updateMyProfile(@CurrentUser() user: any, @Body() body: { phone?: string; email?: string; birthDate?: string; nationalId?: string; address?: string }) {
+    return this.employeesService.updateMyProfile(user.id, body);
   }
 }

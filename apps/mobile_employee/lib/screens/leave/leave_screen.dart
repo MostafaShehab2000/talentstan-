@@ -182,13 +182,15 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
     String? errorMsg;
 
     final typeLabels = {
-      'permission': 'طلب إذن',
-      'mission':    'طلب مأمورية',
-      'hr_letter':  'خطاب HR',
-      'experience_letter': 'خطاب خبرة',
+      'permission':         'طلب إذن',
+      'mission':            'طلب مأمورية',
+      'advance':            'طلب سلفة',
+      'data_change':        'تعديل بيانات',
+      'hr_letter':          'خطاب HR',
+      'experience_letter':  'خطاب خبرة',
       'salary_certificate': 'شهادة راتب',
-      'bank_letter': 'خطاب بنكي',
-      'other':      'طلب آخر',
+      'bank_letter':        'خطاب بنكي',
+      'other':              'طلب آخر',
     };
 
     showModalBottomSheet(
@@ -350,9 +352,11 @@ class _LeaveRequestCard extends StatelessWidget {
   }
 
   (Color, String, Color) _statusInfo(String s) => switch (s) {
-    'approved' => (kSuccess, 'موافق عليه', kSuccessLight),
-    'rejected' => (kDanger, 'مرفوض', kDangerLight),
-    _ => (kWarning, 'قيد المراجعة', kWarningLight),
+    'approved'  => (kSuccess,  'موافق عليه',         kSuccessLight),
+    'rejected'  => (kDanger,   'مرفوض',              kDangerLight),
+    'in_review' => (kPrimary,  'ينتظر اعتماد HR',    kPrimaryLight),
+    'cancelled' => (kTextSub,  'ملغي',               kSurface),
+    _           => (kWarning,  'ينتظر المدير',       kWarningLight),
   };
   String _fmt(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return ''; } }
 }
@@ -366,13 +370,15 @@ class _OtherRequestsTab extends StatelessWidget {
   const _OtherRequestsTab({required this.requests, required this.onRefresh, required this.onAdd});
 
   static const _typeLabels = {
-    'permission': ('طلب إذن', Icons.exit_to_app_rounded, Color(0xFF8B5CF6)),
-    'mission':    ('طلب مأمورية', Icons.work_outline_rounded, Color(0xFF0EA5E9)),
-    'hr_letter':  ('خطاب HR', Icons.description_outlined, Color(0xFF10B981)),
-    'experience_letter': ('خطاب خبرة', Icons.workspace_premium_outlined, Color(0xFF10B981)),
-    'salary_certificate': ('شهادة راتب', Icons.attach_money_rounded, Color(0xFF10B981)),
-    'bank_letter': ('خطاب بنكي', Icons.account_balance_outlined, Color(0xFF10B981)),
-    'other': ('طلب آخر', Icons.more_horiz_rounded, Color(0xFF6B7280)),
+    'permission':         ('طلب إذن',       Icons.exit_to_app_rounded,        Color(0xFF8B5CF6)),
+    'mission':            ('طلب مأمورية',   Icons.work_outline_rounded,        Color(0xFF0EA5E9)),
+    'advance':            ('طلب سلفة',      Icons.attach_money_rounded,        Color(0xFF10B981)),
+    'data_change':        ('تعديل بيانات',  Icons.edit_outlined,               Color(0xFFF59E0B)),
+    'hr_letter':          ('خطاب HR',       Icons.description_outlined,        Color(0xFF6366F1)),
+    'experience_letter':  ('خطاب خبرة',    Icons.workspace_premium_outlined,   Color(0xFF6366F1)),
+    'salary_certificate': ('شهادة راتب',   Icons.receipt_long_outlined,        Color(0xFF6366F1)),
+    'bank_letter':        ('خطاب بنكي',    Icons.account_balance_outlined,     Color(0xFF6366F1)),
+    'other':              ('طلب آخر',       Icons.more_horiz_rounded,          Color(0xFF6B7280)),
   };
 
   @override

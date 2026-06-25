@@ -279,4 +279,26 @@ export class EmployeesService {
       }))
       .sort((a, b) => a.birthdayThisYear.getTime() - b.birthdayThisYear.getTime());
   }
+
+  async updateFcmToken(id: string, fcmToken: string) {
+    return this.prisma.employee.update({
+      where: { id },
+      data: { fcmToken },
+      select: { id: true },
+    });
+  }
+
+  async updateMyProfile(id: string, body: { phone?: string; email?: string; birthDate?: string; nationalId?: string; address?: string }) {
+    const data: any = {};
+    if (body.phone)      data.phone      = body.phone;
+    if (body.email)      data.email      = body.email;
+    if (body.birthDate)  data.birthDate  = new Date(body.birthDate);
+    if (body.nationalId) data.nationalId = body.nationalId;
+    if (body.address)    data.address    = body.address;
+    return this.prisma.employee.update({
+      where: { id },
+      data,
+      select: { id: true, fullName: true, phone: true, email: true, birthDate: true, nationalId: true, address: true },
+    });
+  }
 }
