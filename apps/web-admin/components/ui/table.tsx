@@ -20,8 +20,8 @@ export function Th({ children, className }: { children?: React.ReactNode; classN
   return <th className={cn('px-4 py-3 font-medium', className)}>{children}</th>;
 }
 
-export function Td({ children, className }: { children?: React.ReactNode; className?: string }) {
-  return <td className={cn('px-4 py-3 text-gray-700', className)}>{children}</td>;
+export function Td({ children, className, colSpan }: { children?: React.ReactNode; className?: string; colSpan?: number }) {
+  return <td colSpan={colSpan} className={cn('px-4 py-3 text-gray-700', className)}>{children}</td>;
 }
 
 export function Tr({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
