@@ -1,9 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:socket_io_client/socket_io_client.dart' as sio;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api_client.dart';
 import '../../core/auth_provider.dart';
 import '../../core/theme.dart';
+
+const _wsBase = 'https://talentstan-production.up.railway.app';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -238,13 +241,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _loading = true;
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
-  Timer? _timer;
+  sio.Socket? _socket;
 
   @override
-  void initState() { super.initState(); _load(); _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load()); }
+  void initState() { super.initState(); _loadAndConnect(); }
 
   @override
-  void dispose() { _timer?.cancel(); _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
+  void dispose() { _socket?.disconnect(); _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
+
+  Future<void> _loadAndConnect() async {
+    await _load();
+    _connectSocket();
+  }
 
   Future<void> _load() async {
     try {
@@ -252,21 +260,35 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       if (mounted) {
         final msgs = res.data is List ? res.data : (res.data['data'] ?? []);
         setState(() { _messages = msgs; _loading = false; });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-        });
+        _scrollDown();
       }
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
+
+  void _connectSocket() async {
+    final token = await const FlutterSecureStorage().read(key: 'access_token');
+    _socket = sio.io('$_wsBase/chat', sio.OptionBuilder()
+      .setTransports(['websocket'])
+      .setAuth({'token': token})
+      .build());
+    _socket!.on('connect', (_) => _socket!.emit('join_group', widget.groupId));
+    _socket!.on('new_message', (data) {
+      if (mounted && data['groupId'] == widget.groupId) {
+        setState(() => _messages.add(data));
+        _scrollDown();
+      }
+    });
+  }
+
+  void _scrollDown() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+  });
 
   Future<void> _send() async {
     if (_ctrl.text.trim().isEmpty) return;
     final text = _ctrl.text.trim();
     _ctrl.clear();
-    try {
-      await ApiClient().dio.post('/communication/groups/${widget.groupId}/messages', data: {'content': text});
-      await _load();
-    } catch (_) {}
+    _socket?.emit('group_message', {'groupId': widget.groupId, 'content': text});
   }
 
   @override
@@ -308,13 +330,18 @@ class _DmChatScreenState extends State<DmChatScreen> {
   bool _loading = true;
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
-  Timer? _timer;
+  sio.Socket? _socket;
 
   @override
-  void initState() { super.initState(); _load(); _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load()); }
+  void initState() { super.initState(); _loadAndConnect(); }
 
   @override
-  void dispose() { _timer?.cancel(); _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
+  void dispose() { _socket?.disconnect(); _ctrl.dispose(); _scroll.dispose(); super.dispose(); }
+
+  Future<void> _loadAndConnect() async {
+    await _load();
+    _connectSocket();
+  }
 
   Future<void> _load() async {
     try {
@@ -322,21 +349,37 @@ class _DmChatScreenState extends State<DmChatScreen> {
       if (mounted) {
         final msgs = res.data is List ? res.data : (res.data['data'] ?? []);
         setState(() { _messages = msgs; _loading = false; });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-        });
+        _scrollDown();
       }
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
+
+  void _connectSocket() async {
+    final token = await const FlutterSecureStorage().read(key: 'access_token');
+    final me = context.read<AuthProvider>().user?.id;
+    _socket = sio.io('$_wsBase/chat', sio.OptionBuilder()
+      .setTransports(['websocket'])
+      .setAuth({'token': token})
+      .build());
+    _socket!.on('new_dm', (data) {
+      final senderId = data['senderId'];
+      final recId = data['recipientId'];
+      if (mounted && (senderId == widget.peerId || recId == widget.peerId || senderId == me)) {
+        setState(() => _messages.add(data));
+        _scrollDown();
+      }
+    });
+  }
+
+  void _scrollDown() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+  });
 
   Future<void> _send() async {
     if (_ctrl.text.trim().isEmpty) return;
     final text = _ctrl.text.trim();
     _ctrl.clear();
-    try {
-      await ApiClient().dio.post('/communication/dm', data: {'recipientId': widget.peerId, 'content': text});
-      await _load();
-    } catch (_) {}
+    _socket?.emit('dm_message', {'recipientId': widget.peerId, 'content': text});
   }
 
   @override

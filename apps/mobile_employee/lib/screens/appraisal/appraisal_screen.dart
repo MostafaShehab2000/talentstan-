@@ -9,12 +9,16 @@ class AppraisalScreen extends StatefulWidget {
   State<AppraisalScreen> createState() => _AppraisalScreenState();
 }
 
-class _AppraisalScreenState extends State<AppraisalScreen> {
+class _AppraisalScreenState extends State<AppraisalScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 2, vsync: this);
   List<dynamic> _appraisals = [];
   bool _loading = true;
 
   @override
   void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() { _tabs.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -33,33 +37,38 @@ class _AppraisalScreenState extends State<AppraisalScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: kSurface,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      title: const Text('التقييم السنوي', style: TextStyle(fontWeight: FontWeight.w800, color: kText)),
+      title: const Text('التقييم السنوي', style: TextStyle(fontWeight: FontWeight.w800)),
+      bottom: TabBar(
+        controller: _tabs,
+        tabs: const [Tab(text: 'دورات التقييم'), Tab(text: 'لوحة الأداء')],
+        indicatorColor: kPrimary,
+      ),
     ),
     body: _loading
         ? const Center(child: CircularProgressIndicator(color: kPrimary))
-        : _appraisals.isEmpty
-            ? _emptyState()
-            : RefreshIndicator(
+        : TabBarView(
+            controller: _tabs,
+            children: [
+              _appraisals.isEmpty ? _emptyState() : RefreshIndicator(
                 color: kPrimary,
                 onRefresh: _load,
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: _appraisals.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _AppraisalCard(
-                    appraisal: _appraisals[i],
-                    onDone: _load,
-                  ),
+                  itemBuilder: (_, i) => _AppraisalCard(appraisal: _appraisals[i], onDone: _load),
                 ),
               ),
+              _PerformanceDashboard(appraisals: _appraisals),
+            ],
+          ),
   );
 
   Widget _emptyState() => const Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.star_outline_rounded, size: 72, color: kBorder),
       SizedBox(height: 16),
-      Text('لا توجد تقييمات نشطة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kText)),
+      Text('لا توجد تقييمات نشطة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
       SizedBox(height: 8),
       Text('ستظهر هنا دورات التقييم المفتوحة', style: TextStyle(fontSize: 14, color: kTextSub)),
     ]),
@@ -166,6 +175,156 @@ class _AppraisalCard extends StatelessWidget {
   };
   String _fmt(dynamic v) => double.tryParse(v.toString())?.toStringAsFixed(1) ?? v.toString();
   String? _fmt2(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return null; } }
+}
+
+// ─── Self Assessment Form ─────────────────────────────────────────────────────
+
+// ─── Performance Dashboard ────────────────────────────────────────────────────
+
+class _PerformanceDashboard extends StatelessWidget {
+  final List<dynamic> appraisals;
+  const _PerformanceDashboard({required this.appraisals});
+
+  @override
+  Widget build(BuildContext context) {
+    if (appraisals.isEmpty) return const Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.bar_chart_rounded, size: 64, color: kBorder),
+        SizedBox(height: 12),
+        Text('لا توجد بيانات أداء بعد', style: TextStyle(fontSize: 15, color: kTextSub)),
+      ]),
+    );
+
+    final scores = appraisals
+        .where((a) => a['selfScore'] != null)
+        .map((a) => (
+          name: (a['cycle']?['name'] as String? ?? ''),
+          self: double.tryParse(a['selfScore'].toString()) ?? 0,
+          manager: double.tryParse(a['managerScore']?.toString() ?? '') ?? 0,
+          final_: double.tryParse(a['finalScore']?.toString() ?? '') ?? 0,
+        ))
+        .toList();
+
+    final latest = scores.isNotEmpty ? scores.last : null;
+    final avg = scores.isEmpty ? 0.0 : scores.fold(0.0, (s, e) => s + e.self) / scores.length;
+
+    String category = '—';
+    Color catColor = kTextSub;
+    if (latest != null && latest.self > 0) {
+      final s = latest.self;
+      if (s >= 90) { category = 'Outstanding ⭐'; catColor = kSuccess; }
+      else if (s >= 75) { category = 'Exceeds Expectations'; catColor = kPrimary; }
+      else if (s >= 60) { category = 'Meets Expectations'; catColor = kWarning; }
+      else { category = 'Needs Improvement'; catColor = kDanger; }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Summary cards
+        Row(children: [
+          Expanded(child: _StatCard(label: 'آخر تقييم ذاتي', value: latest != null ? '${latest.self.round()}%' : '—', color: kPrimary)),
+          const SizedBox(width: 10),
+          Expanded(child: _StatCard(label: 'متوسط كل الدورات', value: avg > 0 ? '${avg.round()}%' : '—', color: kSuccess)),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: _StatCard(label: 'تقييم المدير', value: latest?.manager != null && latest!.manager > 0 ? '${latest.manager.round()}%' : 'لم يتم', color: kWarning)),
+          const SizedBox(width: 10),
+          Expanded(child: _StatCard(label: 'عدد الدورات', value: '${scores.length}', color: kPurple)),
+        ]),
+
+        const SizedBox(height: 16),
+
+        // Category badge
+        if (latest != null && latest.self > 0) Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: kBorder)),
+          child: Column(children: [
+            Text('فئة الأداء', style: const TextStyle(fontSize: 12, color: kTextSub)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(color: catColor.withAlpha(20), borderRadius: BorderRadius.circular(20)),
+              child: Text(category, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: catColor)),
+            ),
+          ]),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Bar chart
+        if (scores.isNotEmpty) Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: kBorder)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('مقارنة الدورات', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            ...scores.map((s) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text(s.name, style: const TextStyle(fontSize: 12, color: kTextSub), overflow: TextOverflow.ellipsis)),
+                  Text('${s.self.round()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kPrimary)),
+                ]),
+                const SizedBox(height: 6),
+                Stack(children: [
+                  Container(height: 10, decoration: BoxDecoration(color: kSurface, borderRadius: BorderRadius.circular(5))),
+                  FractionallySizedBox(
+                    widthFactor: (s.self / 100).clamp(0.0, 1.0),
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: s.self >= 90 ? kSuccess : s.self >= 75 ? kPrimary : s.self >= 60 ? kWarning : kDanger,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                  ),
+                ]),
+              ]),
+            )),
+            // Legend
+            const SizedBox(height: 4),
+            Row(children: [
+              _LegendDot(color: kSuccess, label: '≥90 Outstanding'),
+              const SizedBox(width: 10),
+              _LegendDot(color: kPrimary, label: '≥75 Exceeds'),
+              const SizedBox(width: 10),
+              _LegendDot(color: kWarning, label: '≥60 Meets'),
+            ]),
+          ]),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label, value;
+  final Color color;
+  const _StatCard({required this.label, required this.value, required this.color});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: kBorder)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 11, color: kTextSub)),
+      const SizedBox(height: 6),
+      Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+    ]),
+  );
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendDot({required this.color, required this.label});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+    const SizedBox(width: 4),
+    Text(label, style: const TextStyle(fontSize: 9, color: kTextSub)),
+  ]);
 }
 
 // ─── Self Assessment Form ─────────────────────────────────────────────────────

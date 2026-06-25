@@ -5,6 +5,7 @@ import '../../core/auth_provider.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/theme_provider.dart';
+import '../../core/l10n.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -131,6 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Settings
       _FbSection(children: [
         _DarkModeRow(),
+        _LangRow(),
         _SettingRow(icon: Icons.lock_outline, label: 'تغيير كلمة المرور', color: kPrimary, onTap: () => _showChangePassword(context)),
         _SettingRow(icon: Icons.help_outline, label: 'الدعم الفني', color: kTextSub, onTap: () {}),
         _SettingRow(icon: Icons.logout, label: 'تسجيل الخروج', color: kDanger, onTap: () => _confirmLogout(context)),
@@ -302,6 +304,31 @@ class _InfoRow extends StatelessWidget {
       ]),
     ]),
   );
+}
+
+class _LangRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.watch<L10nProvider>();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(children: [
+        Container(width: 36, height: 36,
+          decoration: BoxDecoration(color: kPrimary.withAlpha(15), shape: BoxShape.circle),
+          child: const Icon(Icons.language_outlined, color: kPrimary, size: 18)),
+        const SizedBox(width: 14),
+        const Expanded(child: Text('اللغة / Language', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kText))),
+        GestureDetector(
+          onTap: l10n.toggle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: kPrimaryLight, borderRadius: BorderRadius.circular(20)),
+            child: Text(l10n.isAr ? 'English' : 'العربية', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kPrimary)),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 class _DarkModeRow extends StatelessWidget {

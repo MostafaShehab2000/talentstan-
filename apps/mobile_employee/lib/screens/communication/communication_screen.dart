@@ -14,28 +14,59 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
   List<dynamic> _posts = [];
   List<dynamic> _birthdays = [];
   bool _loading = true;
+  bool _loadingMore = false;
+  int _page = 1;
+  bool _hasMore = true;
+  final _scroll = ScrollController();
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+    _scroll.addListener(() {
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200 && !_loadingMore && _hasMore) {
+        _loadMore();
+      }
+    });
+  }
 
   @override
-  void dispose() { _tabs.dispose(); super.dispose(); }
+  void dispose() { _tabs.dispose(); _scroll.dispose(); super.dispose(); }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _page = 1; _hasMore = true; });
     try {
       final api = ApiClient().dio;
       final [feedRes, bdRes] = await Future.wait([
-        api.get('/communication/feed'),
+        api.get('/communication/feed', queryParameters: {'page': 1, 'limit': 10}),
         api.get('/employees/birthdays/upcoming'),
       ]);
       if (mounted) setState(() {
-        _posts     = feedRes.data is List ? feedRes.data : (feedRes.data['data'] ?? []);
+        final data = feedRes.data is List ? feedRes.data : (feedRes.data['data'] ?? []);
+        _posts     = data;
+        _hasMore   = (data as List).length >= 10;
         _birthdays = bdRes.data is List ? bdRes.data : (bdRes.data['data'] ?? []);
         _loading   = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      _page++;
+      final res = await ApiClient().dio.get('/communication/feed', queryParameters: {'page': _page, 'limit': 10});
+      final newPosts = res.data is List ? res.data : (res.data['data'] ?? []);
+      if (mounted) setState(() {
+        _posts = [..._posts, ...newPosts];
+        _hasMore = (newPosts as List).length >= 10;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() { _loadingMore = false; _page--; });
     }
   }
 
@@ -61,7 +92,7 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
         : TabBarView(
             controller: _tabs,
             children: [
-              _FeedTab(posts: _posts, onRefresh: _load),
+              _FeedTab(posts: _posts, onRefresh: _load, scroll: _scroll, loadingMore: _loadingMore),
               _BirthdaysTab(birthdays: _birthdays, onRefresh: _load),
             ],
           ),
@@ -133,7 +164,9 @@ class _CommunicationScreenState extends State<CommunicationScreen> with SingleTi
 class _FeedTab extends StatelessWidget {
   final List<dynamic> posts;
   final Future<void> Function() onRefresh;
-  const _FeedTab({required this.posts, required this.onRefresh});
+  final ScrollController scroll;
+  final bool loadingMore;
+  const _FeedTab({required this.posts, required this.onRefresh, required this.scroll, required this.loadingMore});
 
   @override
   Widget build(BuildContext context) {
@@ -151,9 +184,16 @@ class _FeedTab extends StatelessWidget {
       color: kPrimary,
       onRefresh: onRefresh,
       child: ListView.builder(
+        controller: scroll,
         padding: EdgeInsets.zero,
-        itemCount: posts.length,
-        itemBuilder: (_, i) => _PostCard(posts[i]),
+        itemCount: posts.length + (loadingMore ? 1 : 0),
+        itemBuilder: (_, i) {
+          if (i == posts.length) return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator(color: kPrimary, strokeWidth: 2)),
+          );
+          return _PostCard(posts[i]);
+        },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 
@@ -167,7 +168,16 @@ class _PayslipDetail extends StatelessWidget {
       SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: () {},
+          onPressed: () async {
+            final url = p['pdfUrl'] as String?;
+            if (url != null && url.isNotEmpty) {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('لا يوجد PDF مرفق لهذا الكشف بعد')));
+            }
+          },
           style: OutlinedButton.styleFrom(
             foregroundColor: kPrimary,
             side: const BorderSide(color: kPrimary),
@@ -175,7 +185,7 @@ class _PayslipDetail extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           icon: const Icon(Icons.picture_as_pdf_rounded),
-          label: const Text('تحميل PDF', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          label: Text(p['pdfUrl'] != null ? 'تحميل PDF' : 'لا يوجد PDF', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ),
     ]);

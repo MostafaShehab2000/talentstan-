@@ -11,7 +11,13 @@ import { Table, Thead, Tbody, Th, Td, Tr, EmptyState } from '@/components/ui/tab
 import { Plus, Pencil, CheckCircle, XCircle } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = { leave: 'إجازة', permission: 'إذن', mission: 'مأمورية' };
-const STATUS_LABELS: Record<string, string> = { pending: 'معلق', approved: 'موافق', rejected: 'مرفوض', cancelled: 'ملغي' };
+const STATUS_LABELS: Record<string, string> = {
+  submitted: 'معلق عند المدير',
+  in_review: 'ينتظر HR ⚡',
+  approved:  'موافق عليه',
+  rejected:  'مرفوض',
+  cancelled: 'ملغي',
+};
 
 type LeaveType = { id: string; name: string; category: string; annualQuota?: number; requiresAttachment?: boolean };
 type LeaveRequest = {
@@ -114,12 +120,18 @@ export default function LeavePage() {
                     <Td>{new Date(r.endDate).toLocaleDateString('ar-EG')}</Td>
                     <Td>{r.totalDays}</Td>
                     <Td><Badge status={r.status} /></Td>
-                    <Td>{r.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="success" onClick={() => actionMut.mutate({ id: r.id, action: 'approve' })}><CheckCircle size={13} /> قبول</Button>
-                        <Button size="sm" variant="danger" onClick={() => actionMut.mutate({ id: r.id, action: 'reject' })}><XCircle size={13} /> رفض</Button>
-                      </div>
-                    )}</Td>
+                    <Td>
+                      {r.status === 'in_review' && (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="success" onClick={() => actionMut.mutate({ id: r.id, action: 'hr-approve' })}>
+                            <CheckCircle size={13} /> اعتماد HR
+                          </Button>
+                          <Button size="sm" variant="danger" onClick={() => actionMut.mutate({ id: r.id, action: 'hr-reject' })}>
+                            <XCircle size={13} /> رفض
+                          </Button>
+                        </div>
+                      )}
+                    </Td>
                   </Tr>
                 ))}</Tbody>
               </Table>
