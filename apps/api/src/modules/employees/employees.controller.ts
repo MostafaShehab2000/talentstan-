@@ -68,6 +68,12 @@ export class EmployeesController {
     return this.employeesService.getOrgChart(tenantId);
   }
 
+  @Get('birthdays/upcoming')
+  @ApiOperation({ summary: 'أعياد الميلاد القادمة (7 أيام)' })
+  getBirthdays(@TenantId() tenantId: string) {
+    return this.employeesService.getUpcomingBirthdays(tenantId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'تفاصيل موظف' })
   findOne(@TenantId() tenantId: string, @Param('id') id: string) {

@@ -253,4 +253,30 @@ export class EmployeesService {
       select: { id: true },
     });
   }
+
+  async getUpcomingBirthdays(tenantId: string) {
+    const employees = await this.prisma.employee.findMany({
+      where: { tenantId, status: 'active', hireDate: { not: null } },
+      select: { id: true, fullName: true, profilePhotoUrl: true, hireDate: true,
+        jobTitle: { select: { name: true } }, department: { select: { name: true } } },
+    });
+
+    const today = new Date();
+    const inSevenDays = new Date(today);
+    inSevenDays.setDate(today.getDate() + 7);
+
+    return employees
+      .filter(e => {
+        if (!e.hireDate) return false;
+        const bd = new Date(e.hireDate);
+        const thisYear = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+        return thisYear >= today && thisYear <= inSevenDays;
+      })
+      .map(e => ({
+        ...e,
+        birthdayThisYear: new Date(today.getFullYear(), new Date(e.hireDate!).getMonth(), new Date(e.hireDate!).getDate()),
+        isToday: new Date(e.hireDate!).getMonth() === today.getMonth() && new Date(e.hireDate!).getDate() === today.getDate(),
+      }))
+      .sort((a, b) => a.birthdayThisYear.getTime() - b.birthdayThisYear.getTime());
+  }
 }
