@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "361588889025",
+    "project_id": "talentstan",
+    "storage_bucket": "talentstan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361588889025:android:bfb536956d84c698e00b40",
+        "android_client_info": {
+          "package_name": "com.talentstan.mobile_employee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA989ov3angvuaziYJkpcwHKMHtcZCYpLw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
