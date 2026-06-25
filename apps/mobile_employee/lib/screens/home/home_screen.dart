@@ -8,6 +8,7 @@ import '../payslips/payslips_screen.dart';
 import '../profile/profile_screen.dart';
 import '../communication/communication_screen.dart';
 import '../attendance/attendance_screen.dart';
+import '../manager/manager_screen.dart';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -19,19 +20,33 @@ class HomeShell extends StatefulWidget {
 
 class HomeShellState extends State<HomeShell> {
   int _tab = 0;
+  int _pendingCount = 0;
   final _leaveKey = GlobalKey<LeaveScreenState>();
 
-  void goToTab(int i)    => setState(() => _tab = i);
-  void goToLeave()       => setState(() => _tab = 2);
-  void goToPayslips()    => setState(() => _tab = 0); // payslips via home for now
+  void goToTab(int i) => setState(() => _tab = i);
+  void goToLeave()    => setState(() => _tab = 2);
+
+  @override
+  void initState() { super.initState(); _loadPendingCount(); }
+
+  Future<void> _loadPendingCount() async {
+    try {
+      final res = await ApiClient().dio.get('/leave/requests/pending-my-approval');
+      final data = res.data is List ? res.data : (res.data['data'] ?? []);
+      if (mounted) setState(() => _pendingCount = (data as List).length);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    final isManager = user?.isManager == true;
+
     final screens = [
       _HomeTab(key: const ValueKey('home')),
       const CommunicationScreen(),
       LeaveScreen(key: _leaveKey),
-      const _CommunityPlaceholder(),
+      if (isManager) const ManagerScreen() else const _CommunityPlaceholder(),
       const ProfileScreen(),
     ];
 
@@ -45,7 +60,7 @@ class HomeShellState extends State<HomeShell> {
         ),
         child: BottomNavigationBar(
           currentIndex: _tab,
-          onTap: (i) => setState(() => _tab = i),
+          onTap: (i) { setState(() => _tab = i); if (i == 3 && isManager) _loadPendingCount(); },
           elevation: 0,
           backgroundColor: Colors.transparent,
           selectedItemColor: kPrimary,
@@ -55,17 +70,43 @@ class HomeShellState extends State<HomeShell> {
           selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 10),
           type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined, size: 24), activeIcon: Icon(Icons.home_rounded, size: 24), label: 'الرئيسية'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded, size: 24), activeIcon: Icon(Icons.chat_bubble_rounded, size: 24), label: 'الرسائل'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 24), activeIcon: Icon(Icons.assignment_rounded, size: 24), label: 'الطلبات'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_outline_rounded, size: 24), activeIcon: Icon(Icons.people_rounded, size: 24), label: 'المجتمع'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded, size: 24), activeIcon: Icon(Icons.person_rounded, size: 24), label: 'الملف الشخصي'),
+          items: [
+            const BottomNavigationBarItem(icon: Icon(Icons.home_outlined, size: 24), activeIcon: Icon(Icons.home_rounded, size: 24), label: 'الرئيسية'),
+            const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded, size: 24), activeIcon: Icon(Icons.chat_bubble_rounded, size: 24), label: 'الرسائل'),
+            const BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 24), activeIcon: Icon(Icons.assignment_rounded, size: 24), label: 'الطلبات'),
+            BottomNavigationBarItem(
+              icon: _BadgeIcon(icon: isManager ? Icons.supervisor_account_outlined : Icons.people_outline_rounded, count: isManager ? _pendingCount : 0),
+              activeIcon: Icon(isManager ? Icons.supervisor_account_rounded : Icons.people_rounded, size: 24),
+              label: isManager ? 'الفريق' : 'المجتمع',
+            ),
+            const BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded, size: 24), activeIcon: Icon(Icons.person_rounded, size: 24), label: 'الملف الشخصي'),
           ],
         ),
       ),
     );
   }
+}
+
+class _BadgeIcon extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  const _BadgeIcon({required this.icon, required this.count});
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Icon(icon, size: 24),
+      if (count > 0) Positioned(
+        top: -4, left: -4,
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(color: kDanger, shape: BoxShape.circle),
+          child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+        ),
+      ),
+    ],
+  );
 }
 
 class _CommunityPlaceholder extends StatelessWidget {

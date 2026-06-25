@@ -129,6 +129,25 @@ export class LeaveController {
     return this.leaveService.getPendingForManager(user.id, tenantId);
   }
 
+  @Patch('requests/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'اعتماد طلب (Manager/HR)' })
+  approveRequest(@TenantId() tenantId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    return this.leaveService.approveRequest(tenantId, id, user.id);
+  }
+
+  @Patch('requests/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'رفض طلب (Manager/HR)' })
+  rejectRequest(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    return this.leaveService.rejectRequest(tenantId, id, user.id, note);
+  }
+
   @Get('requests/:id')
   @ApiOperation({ summary: 'تفاصيل طلب + Timeline الاعتماد' })
   getRequestById(@TenantId() tenantId: string, @Param('id') id: string) {

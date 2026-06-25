@@ -472,6 +472,21 @@ export class LeaveService {
     return { data: requests, summary: { totalRequests: requests.length, totalDays, totalHours } };
   }
 
+  async approveRequest(tenantId: string, id: string, managerId: string) {
+    const req = await this.prisma.leaveRequest.findFirst({ where: { id, tenantId } });
+    if (!req) throw new NotFoundException('الطلب غير موجود');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'approved' } });
+    if (req.leaveType) await this.onRequestApproved(id);
+    return { success: true };
+  }
+
+  async rejectRequest(tenantId: string, id: string, managerId: string, note?: string) {
+    const req = await this.prisma.leaveRequest.findFirst({ where: { id, tenantId } });
+    if (!req) throw new NotFoundException('الطلب غير موجود');
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'rejected' } });
+    return { success: true };
+  }
+
   // ─── تحديث رصيد الموظف بعد اعتماد الطلب (يُستدعى من Workflow callback) ───
   async onRequestApproved(requestId: string) {
     const req = await this.prisma.leaveRequest.findUnique({
