@@ -9,6 +9,7 @@ import '../profile/profile_screen.dart';
 import '../communication/communication_screen.dart';
 import '../attendance/attendance_screen.dart';
 import '../manager/manager_screen.dart';
+import '../appraisal/appraisal_screen.dart';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -355,11 +356,11 @@ class _QuickActions extends StatelessWidget {
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PayslipsScreen())),
           ),
           _QuickBtn(
-            icon: Icons.folder_copy_rounded,
-            label: 'المستندات',
+            icon: Icons.star_rounded,
+            label: 'التقييم',
             color: kPurple,
             bgColor: kPurpleLight,
-            onTap: () {},
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppraisalScreen())),
           ),
         ]),
       ]),

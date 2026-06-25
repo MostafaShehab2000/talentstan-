@@ -68,6 +68,12 @@ export class AppraisalController {
     return this.appraisalService.getAllAppraisals(tenantId, filter);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'تفاصيل تقييم + معايير التقييم للموظف' })
+  getOne(@TenantId() tenantId: string, @CurrentUser() user: any, @Param('id') id: string) {
+    return this.appraisalService.getAppraisalDetails(tenantId, id, user.id);
+  }
+
   @Post(':id/self-assessment')
   @ApiOperation({ summary: 'تقديم التقييم الذاتي' })
   submitSelf(@TenantId() tenantId: string, @CurrentUser() user: any, @Param('id') id: string, @Body() dto: SubmitAppraisalDto) {

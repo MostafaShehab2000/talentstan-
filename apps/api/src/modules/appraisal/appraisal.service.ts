@@ -227,4 +227,27 @@ export class AppraisalService {
       employees: employeeRatings,
     };
   }
+
+  async getAppraisalDetails(tenantId: string, id: string, employeeId: string) {
+    const appraisal = await this.prisma.employeeAppraisal.findFirst({
+      where: { id, employeeId, cycle: { tenantId } },
+      include: {
+        cycle:  { select: { id: true, name: true, startDate: true, endDate: true, status: true } },
+        template: {
+          include: {
+            sections: {
+              include: { criteria: { select: { id: true, criterionName: true, weight: true } } },
+              orderBy: { sectionType: 'asc' },
+            },
+          },
+        },
+        criteriaScores: {
+          include: { criterion: { select: { id: true, criterionName: true, weight: true } } },
+          where: { evaluatorType: 'self' },
+        },
+      },
+    });
+    if (!appraisal) throw new NotFoundException('التقييم غير موجود');
+    return appraisal;
+  }
 }
