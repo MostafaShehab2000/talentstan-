@@ -11,6 +11,7 @@ import '../attendance/attendance_screen.dart';
 import '../manager/manager_screen.dart';
 import '../appraisal/appraisal_screen.dart';
 import '../chat/chat_screen.dart';
+import '../surveys/surveys_screen.dart';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -132,6 +133,8 @@ class _HomeTab extends StatefulWidget {
 class _HomeTabState extends State<_HomeTab> {
   Map<String, dynamic>? _profile;
   List<dynamic> _announcements = [];
+  List<dynamic> _appraisals    = [];
+  int _pendingRequests = 0;
   bool _loading = true;
 
   @override
@@ -141,14 +144,20 @@ class _HomeTabState extends State<_HomeTab> {
     try {
       final api  = ApiClient().dio;
       final user = context.read<AuthProvider>().user!;
-      final [profRes, leaveRes] = await Future.wait([
+      final results = await Future.wait([
         api.get('/employees/${user.id}'),
-        api.get('/leave/requests/me', queryParameters: {'limit': 3}),
+        api.get('/leave/requests/me', queryParameters: {'limit': 5}),
+        api.get('/appraisal/me'),
       ]);
+      final leaveData = results[1].data is List ? results[1].data : (results[1].data['data'] ?? []);
+      final appraisalData = results[2].data is List ? results[2].data : (results[2].data['data'] ?? []);
+      final pending = (leaveData as List).where((r) => r['status'] == 'submitted' || r['status'] == 'in_review').length;
       if (mounted) setState(() {
-        _profile       = profRes.data;
-        _announcements = leaveRes.data is List ? leaveRes.data : (leaveRes.data['data'] ?? []);
-        _loading       = false;
+        _profile         = results[0].data;
+        _announcements   = leaveData;
+        _appraisals      = appraisalData;
+        _pendingRequests = pending;
+        _loading         = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -168,6 +177,13 @@ class _HomeTabState extends State<_HomeTab> {
           SliverToBoxAdapter(child: Column(children: [
             _GreetingCard(user: user, profile: _profile),
             const SizedBox(height: 16),
+            _DashboardWidgets(
+              loading: _loading,
+              announcements: _announcements,
+              appraisals: _appraisals,
+              pendingRequests: _pendingRequests,
+            ),
+            const SizedBox(height: 16),
             _QuickActions(profile: _profile),
             const SizedBox(height: 16),
             _NewsSection(loading: _loading, items: _announcements, user: user),
@@ -177,6 +193,82 @@ class _HomeTabState extends State<_HomeTab> {
       ),
     );
   }
+}
+
+// ─── Dashboard Widgets ────────────────────────────────────────────────────────
+
+class _DashboardWidgets extends StatelessWidget {
+  final bool loading;
+  final List<dynamic> announcements;
+  final List<dynamic> appraisals;
+  final int pendingRequests;
+  const _DashboardWidgets({required this.loading, required this.announcements, required this.appraisals, required this.pendingRequests});
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const SizedBox(
+      height: 100,
+      child: Center(child: CircularProgressIndicator(color: kPrimary, strokeWidth: 2)),
+    );
+
+    final approved = announcements.where((r) => r['status'] == 'approved').length;
+    final lastAppraisal = appraisals.isNotEmpty ? appraisals.first : null;
+    final lastScore = lastAppraisal?['selfScore'];
+    final lastCycleName = lastAppraisal?['cycle']?['name'] ?? '—';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(children: [
+        Expanded(child: _Widget(
+          icon: Icons.assignment_outlined,
+          color: pendingRequests > 0 ? kWarning : kSuccess,
+          bg: pendingRequests > 0 ? kWarningLight : kSuccessLight,
+          label: 'طلبات معلّقة',
+          value: '$pendingRequests',
+          sub: pendingRequests > 0 ? 'تنتظر المراجعة' : 'لا يوجد معلّق',
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: _Widget(
+          icon: Icons.check_circle_outline,
+          color: kPrimary,
+          bg: kPrimaryLight,
+          label: 'طلبات موافَق عليها',
+          value: '$approved',
+          sub: 'هذا الشهر',
+        )),
+        const SizedBox(width: 10),
+        Expanded(child: _Widget(
+          icon: Icons.star_outline_rounded,
+          color: kPurple,
+          bg: kPurpleLight,
+          label: 'آخر تقييم',
+          value: lastScore != null ? '${double.tryParse(lastScore.toString())?.round()}%' : '—',
+          sub: lastScore != null ? lastCycleName : 'لم يُقيَّم بعد',
+        )),
+      ]),
+    );
+  }
+}
+
+class _Widget extends StatelessWidget {
+  final IconData icon;
+  final Color color, bg;
+  final String label, value, sub;
+  const _Widget({required this.icon, required this.color, required this.bg, required this.label, required this.value, required this.sub});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: kBorder, width: 0.5)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 32, height: 32, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 17)),
+      const SizedBox(height: 8),
+      Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color)),
+      Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: kText), maxLines: 1, overflow: TextOverflow.ellipsis),
+      Text(sub, style: const TextStyle(fontSize: 9, color: kTextSub), maxLines: 1, overflow: TextOverflow.ellipsis),
+    ]),
+  );
 }
 
 // ─── App Bar ─────────────────────────────────────────────────────────────────
@@ -363,6 +455,25 @@ class _QuickActions extends StatelessWidget {
             bgColor: kPurpleLight,
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppraisalScreen())),
           ),
+        ]),
+        const SizedBox(height: 12),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+          _QuickBtn(
+            icon: Icons.poll_outlined,
+            label: 'الاستطلاعات',
+            color: const Color(0xFF0EA5E9),
+            bgColor: const Color(0xFFE0F2FE),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SurveysScreen())),
+          ),
+          _QuickBtn(
+            icon: Icons.access_time_rounded,
+            label: 'الحضور',
+            color: kSuccess,
+            bgColor: kSuccessLight,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen())),
+          ),
+          const SizedBox(width: 60),
+          const SizedBox(width: 60),
         ]),
       ]),
     );
