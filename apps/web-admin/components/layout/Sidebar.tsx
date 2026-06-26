@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Building2, Users, FolderTree, GitBranch,
   CalendarDays, Briefcase, MessageSquare, HelpCircle,
-  FileText, ClipboardList, BarChart3, TrendingUp, Settings, LogOut, ScrollText,
+  FileText, ClipboardList, BarChart3, TrendingUp, Settings, LogOut, ScrollText, Fingerprint,
 } from 'lucide-react';
 import { clearSession } from '@/lib/auth';
 
@@ -26,6 +26,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/departments', label: 'الأقسام', icon: <FolderTree size={18} /> },
   { href: '/admin/job-titles', label: 'المسميات الوظيفية', icon: <Briefcase size={18} /> },
   { href: '/admin/workflow', label: 'مسارات الموافقة', icon: <GitBranch size={18} /> },
+  { href: '/admin/attendance', label: 'الحضور والانصراف', icon: <Fingerprint size={18} /> },
   { href: '/admin/leave', label: 'الإجازات', icon: <CalendarDays size={18} /> },
   { href: '/admin/other-requests', label: 'طلبات الإذن والخطابات', icon: <ScrollText size={18} /> },
   { href: '/admin/recruitment', label: 'التوظيف', icon: <Briefcase size={18} /> },
