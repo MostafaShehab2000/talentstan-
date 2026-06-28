@@ -44,16 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
               Center(
                 child: Column(children: [
-                  Container(
-                    width: 64, height: 64,
-                    decoration: BoxDecoration(color: kPrimary, borderRadius: BorderRadius.circular(14)),
-                    child: const Center(
-                      child: Text('T', style: TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text('Talentstan', style: TextStyle(color: kPrimary, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-                  const SizedBox(height: 4),
+                  Image.asset('assets/images/logo.png', width: 200, fit: BoxFit.contain),
+                  const SizedBox(height: 8),
                   const Text('نظام إدارة الموارد البشرية', style: TextStyle(color: kTextSub, fontSize: 14)),
                 ]),
               ),
