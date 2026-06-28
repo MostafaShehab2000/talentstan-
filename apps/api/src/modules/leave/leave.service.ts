@@ -474,7 +474,7 @@ export class LeaveService {
   // ─── Manager: الموافقة الأولى → in_review ───
   async approveRequest(tenantId: string, id: string, managerId: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId, status: 'submitted' },
+      where: { id, tenantId, status: { in: ['submitted', 'in_review'] } },
       include: { employee: { select: { fcmToken: true, fullName: true } }, leaveType: true },
     });
     if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعد في انتظار موافقتك');
