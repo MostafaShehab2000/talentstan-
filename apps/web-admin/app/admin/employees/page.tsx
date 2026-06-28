@@ -64,8 +64,9 @@ export default function EmployeesPage() {
   const { data: jtRaw } = useQuery({ queryKey: ['job-titles'], queryFn: () => api.get('/job-titles').then(r => r.data) });
   const { data: empRaw } = useQuery({ queryKey: ['employees-all'], queryFn: () => api.get('/employees', { params: { limit: 500 } }).then(r => r.data) });
 
-  const depts: Dept[] = Array.isArray(deptRaw) ? deptRaw : (deptRaw as any)?.data ?? [];
-  const topDepts = depts.filter(d => !d.parentDepartmentId);
+  // API returns tree — top-level departments with children inside
+  const topDepts: Dept[] = Array.isArray(deptRaw) ? deptRaw : (deptRaw as any)?.data ?? [];
+  const depts = topDepts; // for modal parent select
   const jobTitles: JobTitle[] = Array.isArray(jtRaw) ? jtRaw : (jtRaw as any)?.data ?? [];
   const allEmps: Employee[] = empRaw?.data ?? [];
   const employees: Employee[] = data?.data ?? [];
@@ -74,7 +75,9 @@ export default function EmployeesPage() {
     defaultValues: { roles: 'employee', isManager: false },
   });
   const watchedDeptId = watch('departmentId');
-  const subDepts = depts.filter(d => d.parentDepartmentId === watchedDeptId);
+  // Get sub-departments from the selected department's children (tree structure)
+  const selectedDept = topDepts.find(d => d.id === watchedDeptId);
+  const subDepts: Dept[] = selectedDept?.children ?? [];
 
   const saveMut = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: any }) =>
