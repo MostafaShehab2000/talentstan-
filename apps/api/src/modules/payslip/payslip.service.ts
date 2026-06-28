@@ -13,6 +13,8 @@ export class PayslipService {
     const employee = await this.prisma.employee.findFirst({ where: { id: dto.employeeId, tenantId } });
     if (!employee) throw new NotFoundException('الموظف غير موجود');
 
+    // نخزن paymentMethod داخل allowances لتجنب تغيير الـ schema
+    const allowances = { ...(dto.allowances ?? {}), paymentMethod: dto.paymentMethod ?? 'cash' };
     const payslip = await this.prisma.payslip.upsert({
       where: { employeeId_month_year: { employeeId: dto.employeeId, month: dto.month, year: dto.year } },
       create: {
@@ -21,7 +23,7 @@ export class PayslipService {
         month: dto.month,
         year: dto.year,
         basicSalary: dto.basicSalary,
-        allowances: dto.allowances ?? {},
+        allowances,
         deductions: dto.deductions ?? {},
         netSalary: dto.netSalary,
         pdfUrl: dto.pdfUrl,
@@ -29,7 +31,7 @@ export class PayslipService {
       },
       update: {
         basicSalary: dto.basicSalary,
-        allowances: dto.allowances ?? {},
+        allowances,
         deductions: dto.deductions ?? {},
         netSalary: dto.netSalary,
         pdfUrl: dto.pdfUrl,
