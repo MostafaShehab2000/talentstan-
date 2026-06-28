@@ -16,6 +16,7 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
   List<dynamic> _approvals     = [];
   List<dynamic> _types         = [];
   List<dynamic> _otherRequests = [];
+  List<dynamic> _balances      = [];
   bool _loading = true;
 
   @override
@@ -28,10 +29,11 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
     setState(() => _loading = true);
     try {
       final api = ApiClient().dio;
-      final [reqRes, typeRes, otherRes] = await Future.wait([
+      final [reqRes, typeRes, otherRes, balRes] = await Future.wait([
         api.get('/leave/requests/me'),
         api.get('/leave/types'),
         api.get('/other-requests/me'),
+        api.get('/leave/balances/me'),
       ]);
       List<dynamic> approvals = [];
       try {
@@ -42,6 +44,7 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
         _myRequests    = reqRes.data is List ? reqRes.data : (reqRes.data['data'] ?? []);
         _types         = typeRes.data is List ? typeRes.data : (typeRes.data['data'] ?? []);
         _otherRequests = otherRes.data is List ? otherRes.data : (otherRes.data['data'] ?? []);
+        _balances      = balRes.data is List ? balRes.data : (balRes.data['data'] ?? []);
         _approvals     = approvals;
         _loading       = false;
       });
@@ -100,7 +103,7 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
             children: [
               _MyRequestsTab(requests: _myRequests, onRefresh: _load, onAdd: _showNewLeaveRequest),
               _ApprovalsTab(approvals: _approvals, onRefresh: _load),
-              _BalanceTab(types: _types, requests: _myRequests, onAdd: _showNewLeaveRequest),
+              _BalanceTab(types: _types, balances: _balances, onAdd: _showNewLeaveRequest),
               _OtherRequestsTab(requests: _otherRequests, onRefresh: _load,
                   onAdd: () => _showNewOtherRequest('permission')),
             ],
@@ -575,35 +578,56 @@ class _ApprovalCardState extends State<_ApprovalCard> {
 
 class _BalanceTab extends StatelessWidget {
   final List<dynamic> types;
-  final List<dynamic> requests;
+  final List<dynamic> balances;
   final VoidCallback onAdd;
-  const _BalanceTab({required this.types, required this.requests, required this.onAdd});
+  const _BalanceTab({required this.types, required this.balances, required this.onAdd});
+
+  static const _icons = <String, (IconData, Color, Color)>{
+    'سنوية':  (Icons.beach_access_rounded,     kPrimary, kPrimaryLight),
+    'مرضية':  (Icons.medical_services_rounded,  kSuccess, kSuccessLight),
+    'طارئة':  (Icons.warning_amber_rounded,     kWarning, kWarningLight),
+    'عارضة':  (Icons.warning_amber_rounded,     kWarning, kWarningLight),
+  };
 
   @override
   Widget build(BuildContext context) {
-    final balanceDefs = [
-      ('سنوية',  Icons.beach_access_rounded,    kPrimary,  kPrimaryLight),
-      ('مرضية',  Icons.medical_services_rounded, kSuccess,  kSuccessLight),
-      ('طارئة',  Icons.warning_amber_rounded,   kWarning,  kWarningLight),
-    ];
+    // إذا مفيش رصيد معرّف، اعرض رسالة للمدير
+    if (balances.isEmpty) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.account_balance_wallet_outlined, size: 64, color: kBorder),
+          const SizedBox(height: 12),
+          const Text('لم يتم تحديد رصيد الإجازات بعد', style: TextStyle(color: kTextSub, fontSize: 15)),
+          const SizedBox(height: 4),
+          const Text('يرجى مراجعة مسؤول HR', style: TextStyle(color: kTextSub, fontSize: 13)),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('طلب إجازة')),
+        ]),
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        ...balanceDefs.map((t) {
-          final match     = types.where((lt) => (lt['name'] as String? ?? '').contains(t.$1)).firstOrNull;
-          final total     = (match?['defaultDays'] as num?)?.toInt() ?? 0;
-          final used      = requests.where((r) => r['leaveType']?['name'] == match?['name'] && r['status'] == 'approved').fold<int>(0, (s, r) => s + ((r['totalDays'] as num?)?.toInt() ?? 0));
-          final remaining = (total - used).clamp(0, total);
+        ...balances.map((b) {
+          final name      = b['leaveType']?['name'] as String? ?? '';
+          final entitled  = (b['entitled'] as num?)?.toInt() ?? 0;
+          final used      = (b['used'] as num?)?.toInt() ?? 0;
+          final remaining = (entitled - used).clamp(0, entitled);
+
+          // جيب الأيقونة من أول كلمة في الاسم
+          final iconKey = _icons.keys.firstWhere((k) => name.contains(k), orElse: () => '');
+          final iconData = _icons[iconKey] ?? (Icons.event_available_rounded, kPrimary, kPrimaryLight);
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _BalanceCard(
-              label: 'إجازة ${t.$1}',
-              icon: t.$2,
-              color: t.$3,
-              bgColor: t.$4,
+              label: name,
+              icon: iconData.$1,
+              color: iconData.$2,
+              bgColor: iconData.$3,
               remaining: remaining,
-              total: total,
+              total: entitled,
               used: used,
             ),
           );
