@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Body, Param,
+  Controller, Get, Post, Patch, Delete, Body, Param,
   Query, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -67,6 +67,35 @@ export class CommunicationController {
   @ApiOperation({ summary: 'حذف منشور' })
   deletePost(@TenantId() tenantId: string, @CurrentUser() user: any, @Param('id') postId: string) {
     return this.communicationService.deletePost(tenantId, postId, user.id);
+  }
+
+  @Delete('posts/:postId/comments/:commentId')
+  @ApiOperation({ summary: 'حذف تعليق (HR أو صاحب التعليق)' })
+  deleteComment(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+    @Param('commentId') commentId: string,
+  ) {
+    return this.communicationService.deleteComment(tenantId, commentId, user.id);
+  }
+
+  @Patch('posts/:id/comments-enabled')
+  @Roles('hr_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تفعيل/تعطيل التعليقات على منشور (HR Admin)' })
+  toggleComments(
+    @TenantId() tenantId: string,
+    @Param('id') postId: string,
+    @Body('enabled') enabled: boolean,
+  ) {
+    return this.communicationService.toggleCommentsEnabled(tenantId, postId, enabled);
+  }
+
+  @Get('posts/:id/reactions')
+  @Roles('hr_admin')
+  @ApiOperation({ summary: 'من تفاعل مع المنشور (HR Admin)' })
+  getReactions(@TenantId() tenantId: string, @Param('id') postId: string) {
+    return this.communicationService.getPostReactions(tenantId, postId);
   }
 
   // ── Chat Groups ──

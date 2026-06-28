@@ -1,15 +1,27 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { IsEnum, IsOptional, IsString, IsNumber } from 'class-validator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { OtherRequestType, RequestStatus } from '@prisma/client';
 
 export class CreateOtherRequestDto {
+  @IsEnum(OtherRequestType)
   type: OtherRequestType;
+
+  @IsOptional()
+  @IsString()
   details?: string;
+
+  @IsOptional()
+  @IsNumber()
   copies?: number;
 }
 
 export class UpdateOtherRequestDto {
+  @IsEnum(RequestStatus)
   status: RequestStatus;
+
+  @IsOptional()
+  @IsString()
   adminNote?: string;
 }
 

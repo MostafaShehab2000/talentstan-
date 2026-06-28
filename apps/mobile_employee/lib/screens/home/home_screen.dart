@@ -535,19 +535,66 @@ class _NewsSection extends StatelessWidget {
   }
 }
 
-// Feed Post Card (shown on Home)
-class _NewsCard extends StatelessWidget {
+// Feed Post Card (shown on Home) — with Like + Comments
+class _NewsCard extends StatefulWidget {
   final Map<String, dynamic> r;
   final AuthUser user;
   const _NewsCard(this.r, {required this.user});
+  @override
+  State<_NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends State<_NewsCard> {
+  late bool _liked;
+  late int  _likesCount;
+  late int  _commentsCount;
+  bool _liking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final reactions = widget.r['reactions'] as List? ?? [];
+    _liked = reactions.isNotEmpty;
+    _likesCount    = (widget.r['_count']?['reactions'] as num?)?.toInt() ?? 0;
+    _commentsCount = (widget.r['_count']?['comments'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> _toggleLike() async {
+    if (_liking) return;
+    setState(() { _liking = true; });
+    try {
+      final was = _liked;
+      setState(() { _liked = !was; _likesCount += was ? -1 : 1; });
+      await ApiClient().dio.post('/communication/posts/${widget.r['id']}/react', data: {'reactionType': 'like'});
+    } catch (_) {
+      setState(() { _liked = !_liked; _likesCount += _liked ? 1 : -1; });
+    } finally {
+      if (mounted) setState(() => _liking = false);
+    }
+  }
+
+  void _showComments() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _CommentsSheet(
+        postId: widget.r['id'],
+        commentsEnabled: widget.r['commentsEnabled'] != false,
+        onCommentAdded: () => setState(() => _commentsCount++),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final content   = r['content'] as String? ?? '';
-    final author    = r['author']?['fullName'] ?? 'إدارة';
-    final postType  = r['postType'] ?? r['type'] ?? 'normal';
-    final isPinned  = r['isPinned'] == true;
-    final date      = _fmt(r['createdAt']);
+    final r        = widget.r;
+    final content  = r['content'] as String? ?? '';
+    final author   = r['author']?['fullName'] ?? 'إدارة';
+    final postType = r['postType'] ?? 'normal';
+    final isPinned = r['isPinned'] == true;
+    final date     = _fmt(r['createdAt']);
 
     final isAnnouncement = postType == 'announcement';
     final color = isAnnouncement ? kWarning : kPrimary;
@@ -577,14 +624,137 @@ class _NewsCard extends StatelessWidget {
         ]),
         if (content.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(content, style: const TextStyle(fontSize: 13, color: kText, height: 1.4),
-            maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(content, style: const TextStyle(fontSize: 13, color: kText, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
         ],
+        const SizedBox(height: 10),
+        const Divider(height: 1, color: kBorder),
+        const SizedBox(height: 8),
+        Row(children: [
+          GestureDetector(
+            onTap: _toggleLike,
+            child: Row(children: [
+              Icon(_liked ? Icons.thumb_up_rounded : Icons.thumb_up_outlined,
+                size: 18, color: _liked ? kPrimary : kTextSub),
+              const SizedBox(width: 4),
+              Text('$_likesCount', style: TextStyle(fontSize: 12, color: _liked ? kPrimary : kTextSub, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: _showComments,
+            child: Row(children: [
+              const Icon(Icons.chat_bubble_outline_rounded, size: 17, color: kTextSub),
+              const SizedBox(width: 4),
+              Text('$_commentsCount', style: const TextStyle(fontSize: 12, color: kTextSub, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ]),
       ]),
     );
   }
 
   String _fmt(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return ''; } }
+}
+
+// Comments bottom sheet
+class _CommentsSheet extends StatefulWidget {
+  final String postId;
+  final bool commentsEnabled;
+  final VoidCallback onCommentAdded;
+  const _CommentsSheet({required this.postId, required this.commentsEnabled, required this.onCommentAdded});
+  @override
+  State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+  List<dynamic> _comments = [];
+  bool _loading = true;
+  final _ctrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    try {
+      final res = await ApiClient().dio.get('/communication/posts/${widget.postId}/comments');
+      final data = res.data is List ? res.data : (res.data['data'] ?? []);
+      if (mounted) setState(() { _comments = data; _loading = false; });
+    } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      final res = await ApiClient().dio.post('/communication/posts/${widget.postId}/comments', data: {'comment': text});
+      _ctrl.clear();
+      setState(() => _comments.add(res.data));
+      widget.onCommentAdded();
+    } catch (_) {} finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(0, 0, 0, MediaQuery.of(context).viewInsets.bottom),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(height: 4, width: 40, margin: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: kBorder, borderRadius: BorderRadius.circular(2))),
+      const Text('التعليقات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kText)),
+      const SizedBox(height: 8),
+      if (_loading)
+        const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: kPrimary, strokeWidth: 2))
+      else if (_comments.isEmpty)
+        const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد تعليقات بعد', style: TextStyle(color: kTextSub)))
+      else
+        SizedBox(
+          height: 240,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _comments.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              final c = _comments[i];
+              final name = c['employee']?['fullName'] ?? '';
+              final text = c['comment'] ?? '';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  CircleAvatar(radius: 16, backgroundColor: kPrimaryLight, child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: kPrimary, fontWeight: FontWeight.w800, fontSize: 12))),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kText)),
+                    Text(text, style: const TextStyle(fontSize: 13, color: kText, height: 1.3)),
+                  ])),
+                ]),
+              );
+            },
+          ),
+        ),
+      if (widget.commentsEnabled) ...[
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(children: [
+            Expanded(child: TextField(
+              controller: _ctrl,
+              decoration: const InputDecoration(hintText: 'اكتب تعليقاً…', border: OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+            )),
+            const SizedBox(width: 8),
+            _sending
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary))
+              : IconButton(onPressed: _send, icon: const Icon(Icons.send_rounded, color: kPrimary)),
+          ]),
+        ),
+      ] else
+        const Padding(padding: EdgeInsets.all(12), child: Text('التعليقات معطّلة على هذا المنشور', style: TextStyle(color: kTextSub, fontSize: 12))),
+    ]),
+  );
 }
 
 class _WelcomeCard extends StatelessWidget {

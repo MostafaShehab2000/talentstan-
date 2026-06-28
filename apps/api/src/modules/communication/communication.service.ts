@@ -133,6 +133,38 @@ export class CommunicationService {
     return { views, reactions, comments };
   }
 
+  async deleteComment(tenantId: string, commentId: string, actorId: string) {
+    const comment = await this.prisma.postComment.findFirst({
+      where: { id: commentId },
+      include: { post: true },
+    });
+    if (!comment) throw new NotFoundException('التعليق غير موجود');
+    // HR أو صاحب التعليق
+    const actor = await this.prisma.employee.findFirst({
+      where: { id: actorId, tenantId },
+      include: { roles: true },
+    });
+    const isHR = actor?.roles.some((r) => r.role === 'hr_admin');
+    if (comment.employeeId !== actorId && !isHR)
+      throw new ForbiddenException('لا يمكنك حذف هذا التعليق');
+    return this.prisma.postComment.delete({ where: { id: commentId } });
+  }
+
+  async toggleCommentsEnabled(tenantId: string, postId: string, enabled: boolean) {
+    const post = await this.prisma.post.findFirst({ where: { id: postId, tenantId } });
+    if (!post) throw new NotFoundException('المنشور غير موجود');
+    return this.prisma.post.update({ where: { id: postId }, data: { commentsEnabled: enabled } });
+  }
+
+  async getPostReactions(tenantId: string, postId: string) {
+    const post = await this.prisma.post.findFirst({ where: { id: postId, tenantId } });
+    if (!post) throw new NotFoundException('المنشور غير موجود');
+    return this.prisma.postReaction.findMany({
+      where: { postId },
+      include: { employee: { select: { id: true, fullName: true, profilePhotoUrl: true } } },
+    });
+  }
+
   async deletePost(tenantId: string, postId: string, actorId: string) {
     const post = await this.prisma.post.findFirst({ where: { id: postId, tenantId } });
     if (!post) throw new NotFoundException('المنشور غير موجود');
