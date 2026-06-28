@@ -83,6 +83,14 @@ class AuthProvider extends ChangeNotifier {
       return null;
     } catch (e) {
       if (e is DioException) {
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.sendTimeout) {
+          return 'السيرفر يستيقظ... انتظر لحظة وحاول مجدداً';
+        }
+        if (e.type == DioExceptionType.connectionError) {
+          return 'تحقق من اتصال الإنترنت';
+        }
         final msg = e.response?.data?['message'];
         return msg is List ? msg.join(' — ') : (msg ?? 'خطأ في الاتصال');
       }
