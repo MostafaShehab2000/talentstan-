@@ -12,8 +12,11 @@ import { Plus, FolderTree, Pencil, Trash2, Building2, Layers } from 'lucide-reac
 type Dept = {
   id: string;
   name: string;
+  parentDepartmentId?: string | null;
   headEmployee?: { fullName: string } | null;
   parentDepartment?: { name: string } | null;
+  children?: Dept[];
+  activeEmployees?: number;
   _count?: { employees: number; children: number };
 };
 
@@ -77,9 +80,9 @@ export default function DepartmentsPage() {
     else createMut.mutate(body);
   };
 
-  const depts: Dept[] = Array.isArray(departments) ? departments : (departments as any)?.data ?? [];
-  const topDepts = depts.filter(d => !d.parentDepartment);
-  const getChildren = (parentId: string) => depts.filter((d: any) => d.parentDepartmentId === parentId || d.parentDepartment?.id === parentId);
+  // API returns tree: [{...dept, children: [...subDepts]}]
+  const topDepts: Dept[] = Array.isArray(departments) ? departments : (departments as any)?.data ?? [];
+  const depts = topDepts; // alias for modal selects
 
   return (
     <div className="space-y-6">
@@ -102,11 +105,11 @@ export default function DepartmentsPage() {
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
           <Layers className="text-purple-600" size={24} />
-          <div><div className="text-2xl font-bold text-purple-700">{depts.length - topDepts.length}</div><div className="text-sm text-purple-600">قسم فرعي</div></div>
+          <div><div className="text-2xl font-bold text-purple-700">{topDepts.reduce((s, d) => s + (d.children?.length ?? 0), 0)}</div><div className="text-sm text-purple-600">قسم فرعي</div></div>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <FolderTree className="text-green-600" size={24} />
-          <div><div className="text-2xl font-bold text-green-700">{depts.length}</div><div className="text-sm text-green-600">إجمالي</div></div>
+          <div><div className="text-2xl font-bold text-green-700">{topDepts.length + topDepts.reduce((s, d) => s + (d.children?.length ?? 0), 0)}</div><div className="text-sm text-green-600">إجمالي</div></div>
         </div>
       </div>
 
@@ -116,7 +119,7 @@ export default function DepartmentsPage() {
         ) : topDepts.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-400 text-sm">لا توجد إدارات — ابدأ بإضافة إدارة جديدة</div>
         ) : topDepts.map(dept => {
-          const children = getChildren(dept.id);
+          const children = dept.children ?? [];
           return (
             <div key={dept.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
               {/* Department Header */}
