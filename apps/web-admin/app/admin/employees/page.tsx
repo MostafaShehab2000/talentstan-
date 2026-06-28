@@ -66,7 +66,6 @@ export default function EmployeesPage() {
 
   const depts: Dept[] = Array.isArray(deptRaw) ? deptRaw : (deptRaw as any)?.data ?? [];
   const topDepts = depts.filter(d => !d.parentDepartmentId);
-  const subDepts = depts.filter(d => d.parentDepartmentId === watchedDeptId);
   const jobTitles: JobTitle[] = Array.isArray(jtRaw) ? jtRaw : (jtRaw as any)?.data ?? [];
   const allEmps: Employee[] = empRaw?.data ?? [];
   const employees: Employee[] = data?.data ?? [];
@@ -75,6 +74,7 @@ export default function EmployeesPage() {
     defaultValues: { roles: 'employee', isManager: false },
   });
   const watchedDeptId = watch('departmentId');
+  const subDepts = depts.filter(d => d.parentDepartmentId === watchedDeptId);
 
   const saveMut = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: any }) =>
