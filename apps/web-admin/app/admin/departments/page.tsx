@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Table, Thead, Tbody, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { Plus, FolderTree, Pencil, Trash2 } from 'lucide-react';
+import { Plus, FolderTree, Pencil, Trash2, Building2, Layers } from 'lucide-react';
 
 type Dept = {
   id: string;
@@ -78,73 +78,108 @@ export default function DepartmentsPage() {
   };
 
   const depts: Dept[] = Array.isArray(departments) ? departments : (departments as any)?.data ?? [];
+  const topDepts = depts.filter(d => !d.parentDepartment);
+  const getChildren = (parentId: string) => depts.filter((d: any) => d.parentDepartmentId === parentId || d.parentDepartment?.id === parentId);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">الأقسام</h2>
-        <Button onClick={openCreate}><Plus size={16} /> قسم جديد</Button>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">الهيكل التنظيمي</h2>
+          <p className="text-sm text-gray-500 mt-1">إدارة → قسم (الأقسام الفرعية تابعة للإدارات)</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={openCreate} variant="outline"><Plus size={16} /> قسم فرعي</Button>
+          <Button onClick={openCreate}><Plus size={16} /> إدارة جديدة</Button>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+          <Building2 className="text-blue-600" size={24} />
+          <div><div className="text-2xl font-bold text-blue-700">{topDepts.length}</div><div className="text-sm text-blue-600">إدارة</div></div>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
+          <Layers className="text-purple-600" size={24} />
+          <div><div className="text-2xl font-bold text-purple-700">{depts.length - topDepts.length}</div><div className="text-sm text-purple-600">قسم فرعي</div></div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+          <FolderTree className="text-green-600" size={24} />
+          <div><div className="text-2xl font-bold text-green-700">{depts.length}</div><div className="text-sm text-green-600">إجمالي</div></div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
         {isLoading ? (
           <div className="py-12 text-center text-gray-400 text-sm">جارٍ التحميل…</div>
-        ) : (
-          <Table>
-            <Thead>
-              <tr>
-                <Th>القسم</Th>
-                <Th>القسم الأب</Th>
-                <Th>المدير</Th>
-                <Th>الموظفون</Th>
-                <Th>إجراءات</Th>
-              </tr>
-            </Thead>
-            <Tbody>
-              {depts.length === 0 ? (
-                <EmptyState />
-              ) : depts.map((d) => (
-                <Tr key={d.id}>
-                  <Td>
-                    <div className="flex items-center gap-2">
-                      <FolderTree size={16} className="text-blue-400" />
-                      <span className="font-medium text-gray-900">{d.name}</span>
+        ) : topDepts.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-400 text-sm">لا توجد إدارات — ابدأ بإضافة إدارة جديدة</div>
+        ) : topDepts.map(dept => {
+          const children = getChildren(dept.id);
+          return (
+            <div key={dept.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              {/* Department Header */}
+              <div className="flex items-center justify-between px-5 py-4 bg-blue-50 border-b border-blue-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <Building2 size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-blue-900 text-base">{dept.name}</span>
+                    <span className="mr-2 text-xs text-blue-500">إدارة · {dept._count?.employees ?? 0} موظف</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => openEdit(dept)}><Pencil size={12} /> تعديل</Button>
+                  <Button size="sm" variant="danger" onClick={() => setDeleteId(dept.id)}><Trash2 size={12} /></Button>
+                </div>
+              </div>
+
+              {/* Sub-departments */}
+              {children.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {children.map(sub => (
+                    <div key={sub.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 border-l-2 border-b-2 border-gray-300 h-4 mr-4 rounded-bl" />
+                        <div className="w-6 h-6 bg-purple-100 rounded-md flex items-center justify-center">
+                          <Layers size={13} className="text-purple-600" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-800">{sub.name}</span>
+                        <span className="text-xs text-gray-400">{sub._count?.employees ?? 0} موظف</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEdit(sub)}><Pencil size={12} /> تعديل</Button>
+                        <Button size="sm" variant="danger" onClick={() => setDeleteId(sub.id)}><Trash2 size={12} /></Button>
+                      </div>
                     </div>
-                  </Td>
-                  <Td>{d.parentDepartment?.name ?? '—'}</Td>
-                  <Td>{d.headEmployee?.fullName ?? '—'}</Td>
-                  <Td>{d._count?.employees ?? 0}</Td>
-                  <Td>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(d)}>
-                        <Pencil size={13} /> تعديل
-                      </Button>
-                      <Button size="sm" variant="danger" onClick={() => setDeleteId(d.id)}>
-                        <Trash2 size={13} /> حذف
-                      </Button>
-                    </div>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        )}
+                  ))}
+                </div>
+              ) : (
+                <div className="px-5 py-2 text-xs text-gray-400 italic">لا توجد أقسام فرعية</div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Create / Edit Modal */}
-      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'تعديل القسم' : 'إضافة قسم جديد'}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'تعديل' : 'إضافة إدارة أو قسم'}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input label="اسم القسم" {...register('name', { required: true })} />
+          <Input label="الاسم" placeholder="مثال: إدارة الموارد البشرية" {...register('name', { required: true })} />
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">القسم الأب (اختياري)</label>
+            <label className="text-sm font-medium text-gray-700">
+              تابع لإدارة <span className="text-xs text-gray-400">(اتركه فارغاً لو إدارة رئيسية)</span>
+            </label>
             <select
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               {...register('parentDepartmentId')}
             >
-              <option value="">— بدون قسم أب —</option>
-              {depts.filter(d => d.id !== editing?.id).map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+              <option value="">— إدارة رئيسية (بدون أب) —</option>
+              {topDepts.filter(d => d.id !== editing?.id).map(d => (
+                <option key={d.id} value={d.id}>↳ قسم داخل: {d.name}</option>
               ))}
             </select>
           </div>

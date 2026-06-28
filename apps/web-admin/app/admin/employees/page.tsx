@@ -11,7 +11,7 @@ import { Table, Thead, Tbody, Th, Td, Tr, EmptyState } from '@/components/ui/tab
 import { formatDate, getInitials } from '@/lib/utils';
 import { Plus, Search, Pencil, Upload, Download, CheckCircle, XCircle } from 'lucide-react';
 
-type Dept = { id: string; name: string };
+type Dept = { id: string; name: string; parentDepartmentId?: string | null; _count?: { employees: number } };
 type JobTitle = { id: string; title: string };
 type Employee = {
   id: string; fullName: string; employeeCode: string; email?: string; phone?: string;
@@ -65,13 +65,16 @@ export default function EmployeesPage() {
   const { data: empRaw } = useQuery({ queryKey: ['employees-all'], queryFn: () => api.get('/employees', { params: { limit: 500 } }).then(r => r.data) });
 
   const depts: Dept[] = Array.isArray(deptRaw) ? deptRaw : (deptRaw as any)?.data ?? [];
+  const topDepts = depts.filter(d => !d.parentDepartmentId);
+  const subDepts = depts.filter(d => d.parentDepartmentId === watchedDeptId);
   const jobTitles: JobTitle[] = Array.isArray(jtRaw) ? jtRaw : (jtRaw as any)?.data ?? [];
   const allEmps: Employee[] = empRaw?.data ?? [];
   const employees: Employee[] = data?.data ?? [];
 
-  const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, formState: { isSubmitting } } = useForm<FormData>({
     defaultValues: { roles: 'employee', isManager: false },
   });
+  const watchedDeptId = watch('departmentId');
 
   const saveMut = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: any }) =>
@@ -96,10 +99,12 @@ export default function EmployeesPage() {
 
   const onSubmit = (d: FormData) => {
     const body: any = {
-      fullName: d.fullName, employeeCode: d.employeeCode,
+      fullName: d.fullName,
       roles: [d.roles],
       isManager: d.roles === 'manager' || d.isManager,
     };
+    // employeeCode only on create, not update
+    if (!editing) body.employeeCode = d.employeeCode;
     if (d.email) body.email = d.email;
     if (d.phone) body.phone = d.phone;
     if (d.departmentId) body.departmentId = d.departmentId;
@@ -305,22 +310,45 @@ export default function EmployeesPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input label="الاسم الكامل" {...register('fullName', { required: true })} />
-            <Input label="كود الموظف" {...register('employeeCode', { required: true })} />
+            {!editing
+              ? <Input label="كود الموظف" {...register('employeeCode', { required: !editing })} />
+              : <div />
+            }
             <Input label="البريد الإلكتروني" type="email" {...register('email')} />
             <Input label="رقم الجوال" {...register('phone')} />
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">القسم</label>
-              <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" {...register('departmentId')}>
-                <option value="">— بدون قسم —</option>
-                {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">المسمى الوظيفي</label>
-              <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" {...register('jobTitleId')}>
-                <option value="">— بدون مسمى —</option>
-                {jobTitles.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
-              </select>
+
+            {/* Cascading: Department → Sub-dept → Job Title */}
+            <div className="col-span-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">الهيكل التنظيمي</p>
+              <div className="grid grid-cols-3 gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-blue-700">الإدارة</label>
+                  <select className="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" {...register('departmentId')}>
+                    <option value="">— اختر الإدارة —</option>
+                    {topDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-blue-700">القسم</label>
+                  <select
+                    className="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    disabled={!watchedDeptId || subDepts.length === 0}
+                    {...register('sectionId' as any)}
+                  >
+                    <option value="">
+                      {!watchedDeptId ? '— اختر الإدارة أولاً —' : subDepts.length === 0 ? '— لا توجد أقسام —' : '— اختر القسم —'}
+                    </option>
+                    {subDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-blue-700">المسمى الوظيفي</label>
+                  <select className="rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" {...register('jobTitleId')}>
+                    <option value="">— اختر المسمى —</option>
+                    {jobTitles.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700">المدير المباشر</label>
