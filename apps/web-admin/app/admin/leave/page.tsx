@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { Table, Thead, Tbody, Th, Td, Tr, EmptyState } from '@/components/ui/table';
-import { Plus, Pencil, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Pencil, CheckCircle, XCircle, Wallet } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = { leave: 'إجازة', permission: 'إذن', mission: 'مأمورية' };
 const STATUS_LABELS: Record<string, string> = {
@@ -47,6 +47,17 @@ export default function LeavePage() {
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<FormData>({
     defaultValues: { category: 'leave', requiresAttachment: false },
   });
+  const [balanceOpen, setBalanceOpen] = useState(false);
+  const [balanceEmpId, setBalanceEmpId] = useState('');
+  const [balanceTypeId, setBalanceTypeId] = useState('');
+  const [balanceVal, setBalanceVal] = useState('21');
+  const { data: empRaw } = useQuery({ queryKey: ['employees-bal'], queryFn: () => api.get('/employees', { params: { limit: 500 } }).then(r => r.data), enabled: balanceOpen });
+  const employees = empRaw?.data ?? [];
+  const setBalMut = useMutation({
+    mutationFn: () => api.post('/leave/balances/set', { employeeId: balanceEmpId, leaveTypeId: balanceTypeId, year: new Date().getFullYear(), entitled: Number(balanceVal) }),
+    onSuccess: () => { setBalanceOpen(false); alert('✅ تم تحديد الرصيد'); },
+    onError: (e: any) => alert(e.response?.data?.message ?? 'حدث خطأ'),
+  });
 
   const saveMut = useMutation({
     mutationFn: ({ id, body }: { id?: string; body: any }) =>
@@ -76,6 +87,10 @@ export default function LeavePage() {
         <h2 className="text-xl font-bold text-gray-900">الإجازات والأذونات</h2>
         {tab === 'types' && <Button onClick={() => { setEditing(null); reset({ category: 'leave', requiresAttachment: false }); setApiError(''); setOpen(true); }}><Plus size={16} /> نوع جديد</Button>}
       </div>
+
+      <Button variant="outline" onClick={() => setBalanceOpen(true)} className="flex items-center gap-2">
+        <Wallet size={16} /> تحديد رصيد موظف
+      </Button>
 
       <div className="flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
         {(['types', 'requests'] as const).map(t => (
@@ -164,6 +179,36 @@ export default function LeavePage() {
             <Button type="submit" loading={isSubmitting || saveMut.isPending}>{editing ? 'تحديث' : 'حفظ'}</Button>
           </div>
         </form>
+      </Modal>
+      {/* Balance Modal */}
+      <Modal open={balanceOpen} onClose={() => setBalanceOpen(false)} title="تحديد رصيد إجازة لموظف">
+        <div className="space-y-4">
+          <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
+            ⚠️ إذا كان نوع الإجازة يتطلب رصيداً، يجب تحديد الرصيد للموظف أولاً قبل أن يتمكن من تقديم الطلب.
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">الموظف</label>
+            <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={balanceEmpId} onChange={e => setBalanceEmpId(e.target.value)}>
+              <option value="">— اختر موظف —</option>
+              {employees.map((e: any) => <option key={e.id} value={e.id}>{e.fullName} ({e.employeeCode})</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">نوع الإجازة</label>
+            <select className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={balanceTypeId} onChange={e => setBalanceTypeId(e.target.value)}>
+              <option value="">— اختر النوع —</option>
+              {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">الرصيد (أيام)</label>
+            <input type="number" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" value={balanceVal} onChange={e => setBalanceVal(e.target.value)} min="0" max="365" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setBalanceOpen(false)}>إلغاء</Button>
+            <Button disabled={!balanceEmpId || !balanceTypeId} loading={setBalMut.isPending} onClick={() => setBalMut.mutate()}>تحديد الرصيد</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

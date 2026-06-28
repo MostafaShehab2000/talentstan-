@@ -162,7 +162,12 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
                     'endDate': endCtrl.text,
                     'reason': reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
                   });
-                  if (ctx.mounted) { Navigator.pop(ctx); _load(); }
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    await _load(); // تحديث فوري
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ تم إرسال الطلب بنجاح'), backgroundColor: Color(0xFF16A34A)));
+                  }
                 } on DioException catch (e) {
                   final msg = e.response?.data?['message'];
                   setS(() => errorMsg = (msg is List ? msg.join(' ') : msg?.toString()) ?? 'حدث خطأ');

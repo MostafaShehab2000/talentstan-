@@ -40,6 +40,11 @@ class TalentStanApp extends StatelessWidget {
       darkTheme: buildTheme(dark: true),
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       locale: l10n.locale,
+      supportedLocales: const [Locale('ar'), Locale('en')],
+      localizationsDelegates: const [
+        DefaultMaterialLocalizations.delegate,
+        DefaultWidgetsLocalizations.delegate,
+      ],
       builder: (context, child) => Directionality(
         textDirection: l10n.dir,
         child: child!,

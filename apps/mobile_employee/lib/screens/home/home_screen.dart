@@ -146,15 +146,17 @@ class _HomeTabState extends State<_HomeTab> {
       final user = context.read<AuthProvider>().user!;
       final results = await Future.wait([
         api.get('/employees/${user.id}'),
-        api.get('/leave/requests/me', queryParameters: {'limit': 5}),
+        api.get('/leave/requests/me', queryParameters: {'limit': 10}),
         api.get('/appraisal/me'),
+        api.get('/communication/feed', queryParameters: {'limit': 5}),
       ]);
       final leaveData = results[1].data is List ? results[1].data : (results[1].data['data'] ?? []);
       final appraisalData = results[2].data is List ? results[2].data : (results[2].data['data'] ?? []);
+      final feedData = results[3].data is List ? results[3].data : (results[3].data['data'] ?? []);
       final pending = (leaveData as List).where((r) => r['status'] == 'submitted' || r['status'] == 'in_review').length;
       if (mounted) setState(() {
         _profile         = results[0].data;
-        _announcements   = leaveData;
+        _announcements   = feedData; // أخبار الشركة الحقيقية
         _appraisals      = appraisalData;
         _pendingRequests = pending;
         _loading         = false;
@@ -533,6 +535,7 @@ class _NewsSection extends StatelessWidget {
   }
 }
 
+// Feed Post Card (shown on Home)
 class _NewsCard extends StatelessWidget {
   final Map<String, dynamic> r;
   final AuthUser user;
@@ -540,40 +543,47 @@ class _NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status   = r['status'] ?? 'pending';
-    final typeName = r['leaveType']?['name'] ?? 'إجازة';
-    final days     = r['totalDays'] ?? 1;
-    final start    = _fmt(r['startDate']);
-    final statusInfo = _statusInfo(status);
+    final content   = r['content'] as String? ?? '';
+    final author    = r['author']?['fullName'] ?? 'إدارة';
+    final postType  = r['postType'] ?? r['type'] ?? 'normal';
+    final isPinned  = r['isPinned'] == true;
+    final date      = _fmt(r['createdAt']);
+
+    final isAnnouncement = postType == 'announcement';
+    final color = isAnnouncement ? kWarning : kPrimary;
+    final bg    = isAnnouncement ? kWarningLight : kPrimaryLight;
+    final icon  = isAnnouncement ? Icons.campaign_rounded : Icons.info_outline_rounded;
+    final label = isAnnouncement ? 'قرار إداري' : 'إشعار عام';
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: kBorder, width: 0.5)),
-      child: Row(children: [
-        Container(
-          width: 42, height: 42,
-          decoration: BoxDecoration(color: statusInfo.$3, borderRadius: BorderRadius.circular(10)),
-          child: Icon(statusInfo.$2, color: statusInfo.$1, size: 22),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('طلب $typeName', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kText)),
-          Text('$days ${days == 1 ? "يوم" : "أيام"} · $start', style: const TextStyle(fontSize: 12, color: kTextSub)),
-        ])),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(color: statusInfo.$3, borderRadius: BorderRadius.circular(20)),
-          child: Text(statusInfo.$4, style: TextStyle(color: statusInfo.$1, fontSize: 11, fontWeight: FontWeight.w700)),
-        ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(right: BorderSide(color: color, width: 3)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 18)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text(author, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kText)),
+              if (isPinned) ...[const SizedBox(width: 4), const Icon(Icons.push_pin, size: 12, color: kWarning)],
+            ]),
+            Text('$label · $date', style: const TextStyle(fontSize: 11, color: kTextSub)),
+          ])),
+        ]),
+        if (content.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(content, style: const TextStyle(fontSize: 13, color: kText, height: 1.4),
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+        ],
       ]),
     );
   }
 
-  (Color, IconData, Color, String) _statusInfo(String s) => switch (s) {
-    'approved' => (kSuccess, Icons.check_circle_rounded, kSuccessLight, 'موافق'),
-    'rejected' => (kDanger, Icons.cancel_rounded, kDangerLight, 'مرفوض'),
-    _ => (kWarning, Icons.pending_rounded, kWarningLight, 'معلق'),
-  };
   String _fmt(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return ''; } }
 }
 
