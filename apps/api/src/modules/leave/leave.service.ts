@@ -246,7 +246,7 @@ export class LeaveService {
       include: { leaveType: true, employee: { select: { fullName: true } } },
     });
 
-    // بدء الـ Workflow لو موجود
+    // بدء الـ Workflow لو موجود — الـ status يفضل submitted لحد ما المدير يوافق
     if (leaveType.workflowTemplateId) {
       const wfInstance = await this.workflowService.startWorkflow({
         tenantId,
@@ -258,13 +258,10 @@ export class LeaveService {
 
       await this.prisma.leaveRequest.update({
         where: { id: request.id },
-        data: {
-          workflowInstanceId: wfInstance.id,
-          status: 'in_review',
-        },
+        data: { workflowInstanceId: wfInstance.id },
       });
 
-      return { ...request, workflowInstanceId: wfInstance.id, status: 'in_review' };
+      return { ...request, workflowInstanceId: wfInstance.id };
     }
 
     return request;
