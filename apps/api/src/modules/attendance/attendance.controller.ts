@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -41,6 +41,34 @@ export class AttendanceController {
     @Body() dto: { ip: string; port?: number; password?: string },
   ) {
     return this.attendanceService.syncFromMachine(tenantId, dto.ip, dto.port, dto.password);
+  }
+
+  // ── سجل الموظف: تسجيل يدوي ──
+
+  @Post('check-in')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تسجيل الحضور (يدوي)' })
+  checkIn(@TenantId() tenantId: string, @CurrentUser() user: any) {
+    return this.attendanceService.checkIn(tenantId, user.id);
+  }
+
+  @Post('check-out')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تسجيل الانصراف (يدوي)' })
+  checkOut(@TenantId() tenantId: string, @CurrentUser() user: any) {
+    return this.attendanceService.checkOut(tenantId, user.id);
+  }
+
+  @Get('my-today')
+  @ApiOperation({ summary: 'حضوري اليوم' })
+  getMyToday(@TenantId() tenantId: string, @CurrentUser() user: any) {
+    return this.attendanceService.getMyToday(tenantId, user.id);
+  }
+
+  @Get('my-week')
+  @ApiOperation({ summary: 'حضوري هذا الأسبوع' })
+  getMyWeek(@TenantId() tenantId: string, @CurrentUser() user: any) {
+    return this.attendanceService.getMyWeek(tenantId, user.id);
   }
 
   // ── سجل الحضور ──

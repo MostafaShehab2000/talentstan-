@@ -150,15 +150,16 @@ class _HomeTabState extends State<_HomeTab> {
         api.get('/appraisal/me'),
         api.get('/communication/feed', queryParameters: {'limit': 5}),
       ]);
-      final leaveData = results[1].data is List ? results[1].data : (results[1].data['data'] ?? []);
+      final leaveData     = results[1].data is List ? results[1].data : (results[1].data['data'] ?? []);
       final appraisalData = results[2].data is List ? results[2].data : (results[2].data['data'] ?? []);
-      final feedData = results[3].data is List ? results[3].data : (results[3].data['data'] ?? []);
-      final pending = (leaveData as List).where((r) => r['status'] == 'submitted' || r['status'] == 'in_review').length;
+      final feedData      = results[3].data is List ? results[3].data : (results[3].data['data'] ?? []);
+      // عداد الطلبات المعلّقة (إجازات + طلبات أخرى)
+      final pendingLeave  = (leaveData as List).where((r) => r['status'] == 'submitted' || r['status'] == 'in_review').length;
       if (mounted) setState(() {
         _profile         = results[0].data;
-        _announcements   = feedData; // أخبار الشركة الحقيقية
+        _announcements   = feedData;
         _appraisals      = appraisalData;
-        _pendingRequests = pending;
+        _pendingRequests = pendingLeave;
         _loading         = false;
       });
     } catch (_) {
@@ -213,7 +214,7 @@ class _DashboardWidgets extends StatelessWidget {
       child: Center(child: CircularProgressIndicator(color: kPrimary, strokeWidth: 2)),
     );
 
-    final approved = announcements.where((r) => r['status'] == 'approved').length;
+    final approved = announcements.where((r) => r['postType'] != null).length; // عدد الأخبار المقروءة
     final lastAppraisal = appraisals.isNotEmpty ? appraisals.first : null;
     final lastScore = lastAppraisal?['selfScore'];
     final lastCycleName = lastAppraisal?['cycle']?['name'] ?? '—';

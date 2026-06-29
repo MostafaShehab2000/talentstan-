@@ -186,10 +186,12 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
 
   void _showNewOtherRequest(String initialType) {
     String selectedType = initialType;
-    final detailsCtrl = TextEditingController();
+    final detailsCtrl  = TextEditingController();
+    final fromCtrl     = TextEditingController();
+    final toCtrl       = TextEditingController();
     String? errorMsg;
 
-    final typeLabels = {
+    const typeLabels = {
       'permission':         'طلب إذن',
       'mission':            'طلب مأمورية',
       'advance':            'طلب سلفة',
@@ -209,7 +211,7 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
       builder: (_) => StatefulBuilder(
         builder: (ctx, setS) => Padding(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text(typeLabels[selectedType] ?? 'طلب جديد',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -223,10 +225,19 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
                 DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
               onChanged: (v) => setS(() => selectedType = v!),
             ),
+            // حقلا الوقت فقط لطلب الإذن
+            if (selectedType == 'permission') ...[
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: _TimeField(label: 'من الساعة', ctrl: fromCtrl, ctx: ctx)),
+                const SizedBox(width: 10),
+                Expanded(child: _TimeField(label: 'إلى الساعة', ctrl: toCtrl, ctx: ctx)),
+              ]),
+            ],
             const SizedBox(height: 12),
             TextField(
               controller: detailsCtrl,
-              maxLines: 3,
+              maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'تفاصيل / سبب (اختياري)',
                 prefixIcon: Icon(Icons.notes_outlined),
@@ -240,12 +251,24 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () async {
+                if (selectedType == 'permission' && (fromCtrl.text.isEmpty || toCtrl.text.isEmpty)) {
+                  setS(() => errorMsg = 'حدد وقت البداية والنهاية');
+                  return;
+                }
                 try {
                   await ApiClient().dio.post('/other-requests', data: {
                     'type': selectedType,
                     'details': detailsCtrl.text.trim().isEmpty ? null : detailsCtrl.text.trim(),
+                    if (selectedType == 'permission' && fromCtrl.text.isNotEmpty) 'fromTime': fromCtrl.text,
+                    if (selectedType == 'permission' && toCtrl.text.isNotEmpty)   'toTime':   toCtrl.text,
                   });
-                  if (ctx.mounted) { Navigator.pop(ctx); _load(); _tabs.animateTo(3); }
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    await _load();
+                    _tabs.animateTo(3);
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ تم إرسال الطلب بنجاح'), backgroundColor: Color(0xFF16A34A)));
+                  }
                 } on DioException catch (e) {
                   final msg = e.response?.data?['message'];
                   setS(() => errorMsg = (msg is List ? msg.join(' ') : msg?.toString()) ?? 'حدث خطأ');
@@ -253,7 +276,7 @@ class LeaveScreenState extends State<LeaveScreen> with SingleTickerProviderState
               },
               child: const Text('إرسال الطلب'),
             ),
-          ]),
+          ])),
         ),
       ),
     );
@@ -274,6 +297,24 @@ class _DateField extends StatelessWidget {
     onTap: () async {
       final d = await showDatePicker(context: ctx, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
       if (d != null) ctrl.text = d.toIso8601String().substring(0, 10);
+    },
+  );
+}
+
+class _TimeField extends StatelessWidget {
+  final String label;
+  final TextEditingController ctrl;
+  final BuildContext ctx;
+  const _TimeField({required this.label, required this.ctrl, required this.ctx});
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: ctrl,
+    readOnly: true,
+    decoration: InputDecoration(labelText: label, prefixIcon: const Icon(Icons.access_time_outlined)),
+    onTap: () async {
+      final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.now());
+      if (t != null) ctrl.text = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     },
   );
 }
@@ -305,18 +346,39 @@ class _MyRequestsTab extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         itemCount: requests.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _LeaveRequestCard(requests[i]),
+        itemBuilder: (_, i) => _LeaveRequestCard(requests[i], onRefresh: onRefresh),
       ),
     );
   }
 }
 
-class _LeaveRequestCard extends StatelessWidget {
+class _LeaveRequestCard extends StatefulWidget {
   final Map<String, dynamic> r;
-  const _LeaveRequestCard(this.r);
+  final Future<void> Function() onRefresh;
+  const _LeaveRequestCard(this.r, {required this.onRefresh});
+  @override
+  State<_LeaveRequestCard> createState() => _LeaveRequestCardState();
+}
+
+class _LeaveRequestCardState extends State<_LeaveRequestCard> {
+  bool _cancelling = false;
+
+  Future<void> _cancel() async {
+    setState(() => _cancelling = true);
+    try {
+      await ApiClient().dio.patch('/leave/requests/${widget.r['id']}/cancel');
+      await widget.onRefresh();
+    } on DioException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.response?.data?['message'] ?? 'حدث خطأ')));
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final r        = widget.r;
     final status   = r['status'] ?? 'pending';
     final typeName = r['leaveType']?['name'] ?? 'إجازة';
     final days     = r['totalDays'] ?? 1;
@@ -324,6 +386,7 @@ class _LeaveRequestCard extends StatelessWidget {
     final end      = _fmt(r['endDate']);
     final reason   = r['reason'] as String?;
     final info     = _statusInfo(status);
+    final canCancel = status == 'submitted' || status == 'in_review';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -355,6 +418,24 @@ class _LeaveRequestCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(reason, style: const TextStyle(fontSize: 12, color: kTextSub), maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
+        // Timeline مختصرة
+        const SizedBox(height: 8),
+        _StatusTimeline(status: status),
+        // إلغاء
+        if (canCancel) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _cancelling
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: kDanger))
+              : TextButton.icon(
+                  onPressed: _cancel,
+                  icon: const Icon(Icons.cancel_outlined, size: 14, color: kDanger),
+                  label: const Text('إلغاء الطلب', style: TextStyle(fontSize: 12, color: kDanger)),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
+                ),
+          ),
+        ],
       ]),
     );
   }
@@ -367,6 +448,44 @@ class _LeaveRequestCard extends StatelessWidget {
     _           => (kWarning,  'ينتظر المدير',       kWarningLight),
   };
   String _fmt(dynamic d) { try { return (d as String).substring(0, 10); } catch (_) { return ''; } }
+}
+
+class _StatusTimeline extends StatelessWidget {
+  final String status;
+  const _StatusTimeline({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      ('تقديم', true),
+      ('مدير', status != 'submitted'),
+      ('HR', status == 'approved' || status == 'rejected'),
+    ];
+    return Row(children: steps.asMap().entries.map((e) {
+      final idx   = e.key;
+      final label = e.value.$1;
+      final done  = e.value.$2;
+      return Expanded(child: Row(children: [
+        if (idx > 0) Expanded(child: Container(
+          height: 1.5,
+          color: done ? kPrimary.withOpacity(0.4) : kBorder,
+        )),
+        Column(children: [
+          Container(
+            width: 20, height: 20,
+            decoration: BoxDecoration(
+              color: done ? kPrimary : kSurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: done ? kPrimary : kBorder, width: 1.5),
+            ),
+            child: done ? const Icon(Icons.check, size: 11, color: Colors.white) : null,
+          ),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 9, color: done ? kPrimary : kTextSub, fontWeight: done ? FontWeight.w700 : FontWeight.w400)),
+        ]),
+      ]));
+    }).toList());
+  }
 }
 
 // ─── Tab: Other Requests (إذن / مأمورية) ──────────────────────────────────────

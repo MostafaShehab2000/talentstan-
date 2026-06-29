@@ -132,6 +132,99 @@ export class AttendanceService {
     return records;
   }
 
+  // ── حضور الموظف: اليوم ──
+  async getMyToday(tenantId: string, employeeId: string) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
+    const record = await this.prisma.attendanceRecord.findFirst({
+      where: { tenantId, employeeId, date: { gte: today, lt: tomorrow } },
+    });
+
+    if (!record) return { status: 'absent', checkInTime: null, checkOutTime: null, hoursWorked: 0, lateMinutes: 0 };
+
+    const checkIn  = record.checkIn;
+    const checkOut = record.checkOut;
+    const workedMinutes = record.workedMinutes ?? 0;
+    const hoursWorked = +(workedMinutes / 60).toFixed(1);
+
+    // تأخر لو دخل بعد 9 صباحاً
+    const expectedIn = new Date(today); expectedIn.setHours(9, 0, 0, 0);
+    const lateMinutes = checkIn && checkIn > expectedIn
+      ? Math.round((checkIn.getTime() - expectedIn.getTime()) / 60000)
+      : 0;
+
+    const status = !checkIn ? 'absent' : lateMinutes > 15 ? 'late' : 'present';
+
+    return {
+      status,
+      checkInTime: checkIn?.toISOString() ?? null,
+      checkOutTime: checkOut?.toISOString() ?? null,
+      hoursWorked,
+      actualWorkTime: workedMinutes > 0 ? `${Math.floor(workedMinutes / 60)}:${String(workedMinutes % 60).padStart(2, '0')}` : '—',
+      lateMinutes,
+    };
+  }
+
+  // ── حضور الموظف: الأسبوع ──
+  async getMyWeek(tenantId: string, employeeId: string) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
+
+    const records = await this.prisma.attendanceRecord.findMany({
+      where: { tenantId, employeeId, date: { gte: weekAgo, lte: today } },
+      orderBy: { date: 'asc' },
+    });
+
+    // أرجع 7 أيام حتى لو مفيش سجل
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekAgo); d.setDate(weekAgo.getDate() + i);
+      const rec = records.find(r => new Date(r.date).toDateString() === d.toDateString());
+      return {
+        date: d.toISOString().substring(0, 10),
+        hoursWorked: rec ? +((rec.workedMinutes ?? 0) / 60).toFixed(1) : 0,
+        status: rec?.checkIn ? 'present' : 'absent',
+      };
+    });
+  }
+
+  // ── تسجيل الحضور اليدوي ──
+  async checkIn(tenantId: string, employeeId: string) {
+    const now = new Date();
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+
+    const existing = await this.prisma.attendanceRecord.findFirst({
+      where: { tenantId, employeeId, date: { gte: today } },
+    });
+    if (existing?.checkIn) throw new BadRequestException('تم تسجيل الحضور مسبقاً');
+
+    await this.prisma.attendanceRecord.upsert({
+      where: { employeeId_date: { employeeId, date: today } },
+      create: { tenantId, employeeId, date: today, checkIn: now, source: 'manual' },
+      update: { checkIn: now },
+    });
+    return { success: true, time: now.toISOString() };
+  }
+
+  // ── تسجيل الانصراف اليدوي ──
+  async checkOut(tenantId: string, employeeId: string) {
+    const now = new Date();
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+
+    const record = await this.prisma.attendanceRecord.findFirst({
+      where: { tenantId, employeeId, date: { gte: today } },
+    });
+    if (!record?.checkIn) throw new BadRequestException('سجّل حضورك أولاً');
+    if (record.checkOut) throw new BadRequestException('تم تسجيل الانصراف مسبقاً');
+
+    const worked = Math.round((now.getTime() - record.checkIn.getTime()) / 60000);
+    await this.prisma.attendanceRecord.update({
+      where: { id: record.id },
+      data: { checkOut: now, workedMinutes: worked },
+    });
+    return { success: true, time: now.toISOString(), workedMinutes: worked };
+  }
+
   async getTodaySummary(tenantId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

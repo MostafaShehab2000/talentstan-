@@ -21,8 +21,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final api = ApiClient().dio;
       final [todayRes, weekRes] = await Future.wait([
-        api.get('/attendance/today'),
-        api.get('/attendance/week'),
+        api.get('/attendance/my-today'),
+        api.get('/attendance/my-week'),
       ]);
       if (mounted) setState(() {
         _today   = todayRes.data is Map ? todayRes.data as Map<String,dynamic> : null;

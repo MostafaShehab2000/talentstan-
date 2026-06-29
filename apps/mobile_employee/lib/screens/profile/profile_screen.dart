@@ -253,10 +253,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (newCtrl.text != confirmCtrl.text) { setS(() => error = 'كلمتا المرور غير متطابقتين'); return; }
                 if (newCtrl.text.length < 6) { setS(() => error = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
                 try {
-                  final user = context.read<AuthProvider>().user!;
-                  await ApiClient().dio.patch('/employees/${user.id}', data: {'password': newCtrl.text});
-                  if (ctx.mounted) { Navigator.pop(ctx); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور'))); }
-                } catch (_) { setS(() => error = 'حدث خطأ'); }
+                  await ApiClient().dio.patch('/auth/change-password', data: {
+                    'oldPassword': oldCtrl.text,
+                    'newPassword': newCtrl.text,
+                  });
+                  if (ctx.mounted) { Navigator.pop(ctx); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم تغيير كلمة المرور'))); }
+                } on DioException catch (e) {
+                  final msg = e.response?.data?['message'];
+                  setS(() => error = msg?.toString() ?? 'حدث خطأ');
+                }
               },
               child: const Text('حفظ'),
             ),
