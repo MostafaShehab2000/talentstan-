@@ -158,20 +158,80 @@ export default function EmployeesPage() {
   const downloadTemplate = async () => {
     const xlsx = await import('xlsx');
     const wb = xlsx.utils.book_new();
-    const ws = xlsx.utils.aoa_to_sheet([EXCEL_COLUMNS.map(c => c.header)]);
-    ws['!cols'] = EXCEL_COLUMNS.map(() => ({ wch: 24 }));
+
+    const headers = EXCEL_COLUMNS.map(c => c.header);
+
+    // صف مثال يوضح طريقة الملء
+    const exampleRow = [
+      '1001',
+      'أحمد محمد علي',
+      'Pass@1234',
+      'ahmed@company.com',
+      '01012345678',
+      '2024-01-15',
+      allDepts[0]?.name ?? 'اسم الإدارة أو القسم كما هو في الجدول أدناه',
+      jobTitles[0]?.title ?? 'المسمى كما هو في جدول المسميات',
+      '',
+      'employee',
+    ];
+
+    const ws = xlsx.utils.aoa_to_sheet([headers, exampleRow]);
+
+    // تنسيق الهيدر
+    ws['!cols'] = headers.map(() => ({ wch: 28 }));
+
+    // تلوين صف الهيدر (A1:J1)
+    headers.forEach((_h, colIdx) => {
+      const cellRef = xlsx.utils.encode_cell({ r: 0, c: colIdx });
+      if (!ws[cellRef]) ws[cellRef] = {};
+      ws[cellRef].s = {
+        fill: { fgColor: { rgb: '1D4ED8' } },
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center' },
+      };
+    });
+
+    // تلوين صف المثال بلون فاتح
+    exampleRow.forEach((_v, colIdx) => {
+      const cellRef = xlsx.utils.encode_cell({ r: 1, c: colIdx });
+      if (!ws[cellRef]) ws[cellRef] = {};
+      ws[cellRef].s = { fill: { fgColor: { rgb: 'DBEAFE' } } };
+    });
+
     xlsx.utils.book_append_sheet(wb, ws, 'الموظفون');
 
-    // All depts (flattened) as reference
-    const deptData = [['اسم القسم / الإدارة', 'المعرّف (ID)', 'النوع'], ...allDepts.map(d => [d.name, d.id, d.parentDepartmentId ? 'قسم' : 'إدارة'])];
-    const wsDept = xlsx.utils.aoa_to_sheet(deptData);
-    wsDept['!cols'] = [{ wch: 30 }, { wch: 40 }, { wch: 10 }];
-    xlsx.utils.book_append_sheet(wb, wsDept, 'الأقسام (مرجع)');
+    // ── شيت الأقسام المتاحة (اكتب الاسم بالضبط) ──
+    const deptRows: any[][] = [
+      ['⚠️ اكتب اسم القسم في الشيت الرئيسي بالضبط كما يظهر هنا', '', ''],
+      ['اسم القسم / الإدارة', 'النوع', 'عدد الموظفين'],
+      ...allDepts.map(d => [
+        d.name,
+        d.parentDepartmentId ? '   ↳ قسم فرعي' : 'إدارة رئيسية',
+        '',
+      ]),
+    ];
+    if (allDepts.length === 0) {
+      deptRows.push(['لا توجد أقسام بعد — أضف الأقسام أولاً من صفحة الأقسام', '', '']);
+    }
+    const wsDept = xlsx.utils.aoa_to_sheet(deptRows);
+    wsDept['!cols'] = [{ wch: 35 }, { wch: 18 }, { wch: 12 }];
+    // تلوين العنوان التحذيري
+    if (wsDept['A1']) wsDept['A1'].s = { font: { bold: true, color: { rgb: 'B91C1C' } } };
+    xlsx.utils.book_append_sheet(wb, wsDept, '⚠️ الأقسام المتاحة');
 
-    const jtData = [['المسمى الوظيفي', 'المعرّف (ID)'], ...jobTitles.map(j => [j.title, j.id])];
-    const wsJt = xlsx.utils.aoa_to_sheet(jtData);
-    wsJt['!cols'] = [{ wch: 30 }, { wch: 40 }];
-    xlsx.utils.book_append_sheet(wb, wsJt, 'المسميات (مرجع)');
+    // ── شيت المسميات الوظيفية ──
+    const jtRows: any[][] = [
+      ['⚠️ اكتب المسمى في الشيت الرئيسي بالضبط كما يظهر هنا', ''],
+      ['المسمى الوظيفي', ''],
+      ...jobTitles.map(j => [j.title, '']),
+    ];
+    if (jobTitles.length === 0) {
+      jtRows.push(['لا توجد مسميات بعد — أضف المسميات أولاً من صفحة المسميات الوظيفية', '']);
+    }
+    const wsJt = xlsx.utils.aoa_to_sheet(jtRows);
+    wsJt['!cols'] = [{ wch: 35 }, { wch: 10 }];
+    if (wsJt['A1']) wsJt['A1'].s = { font: { bold: true, color: { rgb: 'B91C1C' } } };
+    xlsx.utils.book_append_sheet(wb, wsJt, '⚠️ المسميات المتاحة');
 
     xlsx.writeFile(wb, 'نموذج_استيراد_الموظفين.xlsx');
   };
