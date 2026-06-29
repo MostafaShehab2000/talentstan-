@@ -24,16 +24,32 @@ class _ManagerScreenState extends State<ManagerScreen> {
     try {
       final api = ApiClient().dio;
       final results = await Future.wait([
+        // طلبات الإجازة (بدون workflow)
         api.get('/leave/requests/pending-my-approval'),
+        // طلبات بدون workflow (إذن/مأمورية يدوية)
         api.get('/other-requests/pending-manager'),
+        // طلبات تمشي على workflow (الأدمن حددها)
+        api.get('/workflow/pending-approvals'),
       ]);
+
+      final leaveRaw  = results[0].data;
+      final otherRaw  = results[1].data;
+      final wfRaw     = results[2].data;
+
+      // workflow items: فصّل إجازات عن طلبات أخرى
+      final List<dynamic> wfItems = wfRaw is List ? wfRaw : (wfRaw['data'] ?? []);
+      final wfLeave = wfItems.where((i) => i['relatedEntityType'] == 'leave_request').toList();
+      final wfOther = wfItems.where((i) => i['relatedEntityType'] == 'other_request').toList();
+
       if (mounted) setState(() {
-        _leaveRequests = results[0].data is List
-            ? results[0].data
-            : (results[0].data['data'] ?? []);
-        _otherRequests = results[1].data is List
-            ? results[1].data
-            : (results[1].data['data'] ?? []);
+        _leaveRequests = [
+          ...(leaveRaw is List ? leaveRaw : (leaveRaw['data'] ?? [])),
+          ...wfLeave.map((i) => { ...?i['entityDetails'], '_workflowInstanceId': i['id'] }),
+        ];
+        _otherRequests = [
+          ...(otherRaw is List ? otherRaw : (otherRaw['data'] ?? [])),
+          ...wfOther.map((i) => { ...?i['entityDetails'], '_workflowInstanceId': i['id'] }),
+        ];
         _loading = false;
       });
     } catch (_) {
@@ -160,10 +176,18 @@ class _LeaveCardState extends State<_LeaveCard> {
   Future<void> _act(String action) async {
     setState(() => _processing = true);
     try {
-      await ApiClient().dio.patch('/leave/requests/${widget.r['id']}/$action');
+      final wfId = widget.r['_workflowInstanceId'] as String?;
+      if (wfId != null) {
+        // طلب يمشي على workflow من الأدمن
+        await ApiClient().dio.post('/workflow/instances/$wfId/action',
+            data: {'action': action == 'approve' ? 'approve' : 'reject'});
+      } else {
+        // طلب إجازة يدوي
+        await ApiClient().dio.patch('/leave/requests/${widget.r['id']}/$action');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(action == 'approve' ? '✅ تمت الموافقة — سيراجعها HR' : '❌ تم الرفض'),
+          content: Text(action == 'approve' ? '✅ تمت الموافقة' : '❌ تم الرفض'),
           backgroundColor: action == 'approve' ? kSuccess : kDanger,
         ));
         await widget.onAction();
@@ -246,10 +270,18 @@ class _OtherCardState extends State<_OtherCard> {
   Future<void> _act(String action) async {
     setState(() => _processing = true);
     try {
-      await ApiClient().dio.patch('/other-requests/${widget.r['id']}/manager-$action');
+      final wfId = widget.r['_workflowInstanceId'] as String?;
+      if (wfId != null) {
+        // طلب يمشي على workflow من الأدمن
+        await ApiClient().dio.post('/workflow/instances/$wfId/action',
+            data: {'action': action == 'approve' ? 'approve' : 'reject'});
+      } else {
+        // طلب يدوي
+        await ApiClient().dio.patch('/other-requests/${widget.r['id']}/manager-$action');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(action == 'approve' ? '✅ تمت الموافقة — سيراجعها HR' : '❌ تم الرفض'),
+          content: Text(action == 'approve' ? '✅ تمت الموافقة' : '❌ تم الرفض'),
           backgroundColor: action == 'approve' ? kSuccess : kDanger,
         ));
         await widget.onAction();

@@ -291,6 +291,7 @@ model WorkflowInstance {
   recruitmentRequests RecruitmentRequest[]
   employeeAppraisals  EmployeeAppraisal[]
   helpdeskTickets     HelpdeskTicket[]
+  otherRequests      OtherRequest[]
 
   @@map("workflow_instances")
 }
@@ -1018,21 +1019,23 @@ enum OtherRequestType {
 }
 
 model OtherRequest {
-  id         String           @id @default(uuid())
-  tenantId   String
-  employeeId String
-  type       OtherRequestType
-  details    String?
-  fromTime   String?          @map("from_time")
-  toTime     String?          @map("to_time")
-  copies     Int              @default(1)
-  status     RequestStatus    @default(submitted)
-  adminNote  String?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id                 String           @id @default(uuid())
+  tenantId           String
+  employeeId         String
+  type               OtherRequestType
+  details            String?
+  fromTime           String?          @map("from_time")
+  toTime             String?          @map("to_time")
+  copies             Int              @default(1)
+  status             RequestStatus    @default(submitted)
+  adminNote          String?
+  workflowInstanceId String?          @map("workflow_instance_id")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employee Employee @relation(fields: [employeeId], references: [id])
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id])
 
   @@map("other_requests")
 }

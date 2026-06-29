@@ -133,6 +133,9 @@ export class WorkflowService {
       await this.notifyCurrentApprover(instance.id, opts.tenantId, opts.actorId);
     }
 
+    // مزامنة status الطلب المرتبط
+    await this.syncRelatedEntityStatus(instance.relatedEntityType, instance.relatedEntityId, newStatus, newStep, instance.currentStep);
+
     return { instance: updated, action: opts.action, finalStatus: newStatus };
   }
 
@@ -210,6 +213,30 @@ export class WorkflowService {
     return instance;
   }
 
+  // ─── مزامنة حالة الطلب المرتبط مع حالة الـ workflow ───
+  private async syncRelatedEntityStatus(
+    entityType: string,
+    entityId: string,
+    workflowStatus: WorkflowStatus,
+    newStep: number,
+    prevStep: number,
+  ) {
+    if (entityType === 'other_request') {
+      let reqStatus: string;
+      if (workflowStatus === 'approved')  reqStatus = 'approved';
+      else if (workflowStatus === 'rejected') reqStatus = 'rejected';
+      else if (workflowStatus === 'cancelled') reqStatus = 'cancelled';
+      else if (newStep > prevStep) reqStatus = 'in_review'; // تقدم للمعتمد التالي
+      else return;
+
+      await this.prisma.otherRequest.updateMany({
+        where: { id: entityId },
+        data: { status: reqStatus as any },
+      }).catch(() => {});
+    }
+    // يمكن إضافة leave_request هنا بنفس الطريقة مستقبلاً
+  }
+
   // ─── إرسال إشعار للمعتمد التالي (placeholder — هيتوسّع في Phase Notifications) ───
   private async notifyCurrentApprover(
     instanceId: string,
@@ -270,6 +297,31 @@ export class WorkflowService {
       return false;
     });
 
-    return pending;
+    // إضافة تفاصيل الطلب المرتبط لكل instance
+    const enriched = await Promise.all(
+      pending.map(async (inst) => {
+        let entityDetails: any = null;
+        if (inst.relatedEntityType === 'other_request') {
+          entityDetails = await this.prisma.otherRequest.findFirst({
+            where: { id: inst.relatedEntityId },
+            include: {
+              employee: { select: { id: true, fullName: true, employeeCode: true, department: { select: { name: true } } } },
+            },
+          });
+        } else if (inst.relatedEntityType === 'leave_request') {
+          entityDetails = await this.prisma.leaveRequest.findFirst({
+            where: { id: inst.relatedEntityId },
+            include: {
+              leaveType: true,
+              employee: { select: { id: true, fullName: true, employeeCode: true, department: { select: { name: true } } } },
+            },
+          });
+        }
+        const currentStepDef = inst.workflowTemplate?.steps.find(s => s.stepOrder === inst.currentStep);
+        return { ...inst, entityDetails, currentStepDef };
+      })
+    );
+
+    return enriched;
   }
 }
