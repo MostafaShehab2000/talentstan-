@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, HttpCode, HttpStatus, Optional } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OtherRequestsService, CreateOtherRequestDto, UpdateOtherRequestDto } from './other-requests.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -60,5 +60,34 @@ export class OtherRequestsController {
     @Param('id') id: string,
   ) {
     return this.service.cancelRequest(tenantId, id, user.id);
+  }
+
+  @Get('pending-manager')
+  @ApiOperation({ summary: 'طلبات الإذن/المأمورية المعلّقة للمدير' })
+  getPendingForManager(@TenantId() tenantId: string, @CurrentUser() user: any) {
+    return this.service.getPendingForManager(user.id, tenantId);
+  }
+
+  @Patch(':id/manager-approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'موافقة المدير على إذن/مأمورية' })
+  managerApprove(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    return this.service.managerApprove(tenantId, id, user.id);
+  }
+
+  @Patch(':id/manager-reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'رفض المدير للإذن/المأمورية' })
+  managerReject(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    return this.service.managerReject(tenantId, id, user.id, note);
   }
 }

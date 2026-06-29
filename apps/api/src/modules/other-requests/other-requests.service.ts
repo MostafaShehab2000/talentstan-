@@ -12,6 +12,14 @@ export class CreateOtherRequestDto {
   details?: string;
 
   @IsOptional()
+  @IsString()
+  fromTime?: string;
+
+  @IsOptional()
+  @IsString()
+  toTime?: string;
+
+  @IsOptional()
   @IsNumber()
   copies?: number;
 }
@@ -36,10 +44,54 @@ export class OtherRequestsService {
         employeeId,
         type: dto.type,
         details: dto.details,
+        fromTime: dto.fromTime,
+        toTime: dto.toTime,
         copies: dto.copies ?? 1,
         status: 'submitted',
       },
       include: { employee: { select: { fullName: true, employeeCode: true } } },
+    });
+  }
+
+  async getPendingForManager(managerId: string, tenantId: string) {
+    const team = await this.prisma.employee.findMany({
+      where: { directManagerId: managerId, tenantId, status: 'active' },
+      select: { id: true },
+    });
+    const teamIds = team.map((e) => e.id);
+    return this.prisma.otherRequest.findMany({
+      where: {
+        tenantId,
+        employeeId: { in: teamIds },
+        status: 'submitted',
+        type: { in: ['permission', 'mission'] },
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        employee: { select: { id: true, fullName: true, employeeCode: true } },
+      },
+    });
+  }
+
+  async managerApprove(tenantId: string, id: string, managerId: string) {
+    const req = await this.prisma.otherRequest.findFirst({
+      where: { id, tenantId, status: 'submitted' },
+    });
+    if (!req) throw new NotFoundException('الطلب غير موجود');
+    return this.prisma.otherRequest.update({
+      where: { id },
+      data: { status: 'approved' },
+    });
+  }
+
+  async managerReject(tenantId: string, id: string, managerId: string, note?: string) {
+    const req = await this.prisma.otherRequest.findFirst({
+      where: { id, tenantId, status: 'submitted' },
+    });
+    if (!req) throw new NotFoundException('الطلب غير موجود');
+    return this.prisma.otherRequest.update({
+      where: { id },
+      data: { status: 'rejected', adminNote: note },
     });
   }
 

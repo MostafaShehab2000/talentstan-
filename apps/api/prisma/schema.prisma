@@ -1023,6 +1023,8 @@ model OtherRequest {
   employeeId String
   type       OtherRequestType
   details    String?
+  fromTime   String?          @map("from_time")
+  toTime     String?          @map("to_time")
   copies     Int              @default(1)
   status     RequestStatus    @default(submitted)
   adminNote  String?
