@@ -19,10 +19,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  submitted: { label: 'معلق',       color: 'bg-yellow-100 text-yellow-800' },
-  approved:  { label: 'موافق',      color: 'bg-green-100 text-green-800'  },
-  rejected:  { label: 'مرفوض',      color: 'bg-red-100 text-red-800'      },
-  cancelled: { label: 'ملغي',       color: 'bg-gray-100 text-gray-600'    },
+  submitted:  { label: 'عند المدير ⏳',  color: 'bg-yellow-100 text-yellow-800' },
+  in_review:  { label: 'ينتظر HR ⚡',    color: 'bg-blue-100 text-blue-800'    },
+  approved:   { label: 'موافق ✅',       color: 'bg-green-100 text-green-800'  },
+  rejected:   { label: 'مرفوض ❌',       color: 'bg-red-100 text-red-800'      },
+  cancelled:  { label: 'ملغي',           color: 'bg-gray-100 text-gray-600'    },
 };
 
 type OtherRequest = {
@@ -37,7 +38,7 @@ type OtherRequest = {
 export default function OtherRequestsPage() {
   const qc = useQueryClient();
   const [typeFilter, setTypeFilter]     = useState('');
-  const [statusFilter, setStatusFilter] = useState('submitted');
+  const [statusFilter, setStatusFilter] = useState('in_review');
   const [note, setNote]                 = useState('');
 
   const { data: requests = [], isLoading } = useQuery<OtherRequest[]>({

@@ -77,10 +77,11 @@ export class OtherRequestsService {
     const req = await this.prisma.otherRequest.findFirst({
       where: { id, tenantId, status: 'submitted' },
     });
-    if (!req) throw new NotFoundException('الطلب غير موجود');
+    if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعد في انتظار موافقتك');
+    // وافق المدير → يروح لـ HR (in_review)
     return this.prisma.otherRequest.update({
       where: { id },
-      data: { status: 'approved' },
+      data: { status: 'in_review' },
     });
   }
 
