@@ -266,7 +266,11 @@ class _PayslipDetail extends StatelessWidget {
   String _fmtNum(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(0);
 }
 
-typedef _Row = ({String label, double value});
+class _Row {
+  final String label;
+  final double value;
+  const _Row(this.label, this.value);
+}
 
 class _Section extends StatelessWidget {
   final String title, totalLabel;

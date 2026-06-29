@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import '../../core/auth_provider.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
