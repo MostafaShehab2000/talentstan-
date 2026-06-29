@@ -175,29 +175,10 @@ export default function EmployeesPage() {
       'employee',
     ];
 
-    const ws = xlsx.utils.aoa_to_sheet([headers, exampleRow]);
-
-    // تنسيق الهيدر
+    // صف تحذير + صف مثال + صف فارغ للبدء
+    const warningRow = ['*** احذف صفوف المثال هذه قبل الرفع ***', '', '', '', '', '', '', '', '', ''];
+    const ws = xlsx.utils.aoa_to_sheet([headers, warningRow, exampleRow]);
     ws['!cols'] = headers.map(() => ({ wch: 28 }));
-
-    // تلوين صف الهيدر (A1:J1)
-    headers.forEach((_h, colIdx) => {
-      const cellRef = xlsx.utils.encode_cell({ r: 0, c: colIdx });
-      if (!ws[cellRef]) ws[cellRef] = {};
-      ws[cellRef].s = {
-        fill: { fgColor: { rgb: '1D4ED8' } },
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        alignment: { horizontal: 'center' },
-      };
-    });
-
-    // تلوين صف المثال بلون فاتح
-    exampleRow.forEach((_v, colIdx) => {
-      const cellRef = xlsx.utils.encode_cell({ r: 1, c: colIdx });
-      if (!ws[cellRef]) ws[cellRef] = {};
-      ws[cellRef].s = { fill: { fgColor: { rgb: 'DBEAFE' } } };
-    });
-
     xlsx.utils.book_append_sheet(wb, ws, 'الموظفون');
 
     // ── شيت الأقسام المتاحة (اكتب الاسم بالضبط) ──
@@ -216,22 +197,20 @@ export default function EmployeesPage() {
     const wsDept = xlsx.utils.aoa_to_sheet(deptRows);
     wsDept['!cols'] = [{ wch: 35 }, { wch: 18 }, { wch: 12 }];
     // تلوين العنوان التحذيري
-    if (wsDept['A1']) wsDept['A1'].s = { font: { bold: true, color: { rgb: 'B91C1C' } } };
-    xlsx.utils.book_append_sheet(wb, wsDept, '⚠️ الأقسام المتاحة');
+    xlsx.utils.book_append_sheet(wb, wsDept, 'الأقسام المتاحة');
 
     // ── شيت المسميات الوظيفية ──
     const jtRows: any[][] = [
-      ['⚠️ اكتب المسمى في الشيت الرئيسي بالضبط كما يظهر هنا', ''],
-      ['المسمى الوظيفي', ''],
-      ...jobTitles.map(j => [j.title, '']),
+      ['*** اكتب المسمى في شيت الموظفون بالضبط كما يظهر هنا ***'],
+      ['المسمى الوظيفي'],
+      ...jobTitles.map(j => [j.title]),
     ];
     if (jobTitles.length === 0) {
-      jtRows.push(['لا توجد مسميات بعد — أضف المسميات أولاً من صفحة المسميات الوظيفية', '']);
+      jtRows.push(['لا توجد مسميات بعد — أضف المسميات أولاً من صفحة المسميات الوظيفية']);
     }
     const wsJt = xlsx.utils.aoa_to_sheet(jtRows);
-    wsJt['!cols'] = [{ wch: 35 }, { wch: 10 }];
-    if (wsJt['A1']) wsJt['A1'].s = { font: { bold: true, color: { rgb: 'B91C1C' } } };
-    xlsx.utils.book_append_sheet(wb, wsJt, '⚠️ المسميات المتاحة');
+    wsJt['!cols'] = [{ wch: 40 }];
+    xlsx.utils.book_append_sheet(wb, wsJt, 'المسميات المتاحة');
 
     xlsx.writeFile(wb, 'نموذج_استيراد_الموظفين.xlsx');
   };
@@ -259,7 +238,14 @@ export default function EmployeesPage() {
 
       const getCell = (row: any[], field: string) => String(row[fieldMap[field]] ?? '').trim();
 
-      const toImport = rows.slice(1).filter(row => row.some(c => c !== '')).map(row => {
+      const toImport = rows.slice(1)
+        .filter(row => row.some(c => c !== ''))
+        // تجاهل صفوف المثال والتحذيرات
+        .filter(row => {
+          const firstCell = String(row[0] ?? '').trim();
+          return !firstCell.startsWith('***') && !firstCell.startsWith('⚠');
+        })
+        .map(row => {
         const deptName = getCell(row, 'departmentName');
         const jtName   = getCell(row, 'jobTitleName');
         const mgrCode  = getCell(row, 'managerCode');
