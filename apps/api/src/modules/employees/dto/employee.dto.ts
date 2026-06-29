@@ -7,7 +7,9 @@ import {
   IsDateString,
   IsNotEmpty,
   IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EmployeeStatus, EmployeeRole } from '@prisma/client';
 
@@ -47,6 +49,9 @@ export class UpdateEmployeeDto {
 
 export class BulkImportEmployeeDto {
   @ApiProperty({ type: [CreateEmployeeDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEmployeeDto)
   employees: CreateEmployeeDto[];
 }
 
