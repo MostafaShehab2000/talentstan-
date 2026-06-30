@@ -164,6 +164,13 @@ const editSchema = z.object({
 });
 type EditFormData = z.infer<typeof editSchema>;
 
+const editAdminSchema = z.object({
+  adminName: z.string().optional(),
+  adminEmail: z.string().email('بريد غير صالح').optional().or(z.literal('')),
+  adminPassword: z.string().min(6, 'كلمة المرور 6 أحرف على الأقل').optional().or(z.literal('')),
+});
+type EditAdminFormData = z.infer<typeof editAdminSchema>;
+
 export default function TenantsPage() {
   const qc = useQueryClient();
   const [openCreate, setOpenCreate] = useState(false);
@@ -171,6 +178,7 @@ export default function TenantsPage() {
   const [detailTenant, setDetailTenant] = useState<Tenant | null>(null);
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
   const [confirmSuspend, setConfirmSuspend] = useState<Tenant | null>(null);
+  const [showAdminSection, setShowAdminSection] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['tenants'],
@@ -193,6 +201,11 @@ export default function TenantsPage() {
   });
   const editPlan = editForm.watch('subscriptionPlan');
 
+  const adminForm = useForm<EditAdminFormData>({
+    resolver: zodResolver(editAdminSchema) as any,
+    defaultValues: { adminName: '', adminEmail: '', adminPassword: '' },
+  });
+
   const openEdit = (t: Tenant) => {
     editForm.reset({
       name: t.name,
@@ -201,6 +214,8 @@ export default function TenantsPage() {
       subscriptionPlan: (t.subscriptionPlan as any) ?? 'professional',
       subscriptionEnd: t.subscriptionEnd ? t.subscriptionEnd.slice(0, 10) : '',
     });
+    adminForm.reset({ adminName: '', adminEmail: '', adminPassword: '' });
+    setShowAdminSection(false);
     setEditTenant(t);
     setDetailTenant(null);
   };
@@ -215,6 +230,12 @@ export default function TenantsPage() {
     mutationFn: ({ id, body }: { id: string; body: any }) =>
       api.patch(`/super-admin/tenants/${id}`, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['tenants'] }); setEditTenant(null); },
+  });
+
+  const updateAdminMut = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) =>
+      api.patch(`/super-admin/tenants/${id}/admin`, body),
+    onSuccess: () => { adminForm.reset(); setShowAdminSection(false); },
   });
 
   const activateMut = useMutation({
@@ -461,6 +482,48 @@ export default function TenantsPage() {
             <Button type="submit" loading={updateMut.isPending}>حفظ التعديلات</Button>
           </div>
         </form>
+
+        {/* ─── Admin Credentials Section ─── */}
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <button
+            type="button"
+            onClick={() => setShowAdminSection((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            <Edit2 size={14} />
+            {showAdminSection ? 'إخفاء' : 'تغيير بيانات مسؤول الشركة (Email / كلمة المرور)'}
+          </button>
+
+          {showAdminSection && (
+            <form
+              onSubmit={adminForm.handleSubmit((d) => {
+                const body: any = {};
+                if (d.adminName) body.adminName = d.adminName;
+                if (d.adminEmail) body.adminEmail = d.adminEmail;
+                if (d.adminPassword) body.adminPassword = d.adminPassword;
+                if (Object.keys(body).length === 0) return;
+                updateAdminMut.mutate({ id: editTenant!.id, body });
+              })}
+              className="mt-3 space-y-3 rounded-xl bg-blue-50 border border-blue-100 p-4"
+            >
+              <p className="text-xs text-blue-700 font-medium">اترك الحقل فارغاً إذا لم تريد تغييره</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="الاسم الكامل" placeholder="اتركه فارغاً للإبقاء كما هو" {...adminForm.register('adminName')} />
+                <Input label="البريد الإلكتروني" type="email" placeholder="اتركه فارغاً للإبقاء كما هو" error={adminForm.formState.errors.adminEmail?.message} {...adminForm.register('adminEmail')} />
+                <Input label="كلمة المرور الجديدة" type="password" placeholder="6 أحرف على الأقل" error={adminForm.formState.errors.adminPassword?.message} {...adminForm.register('adminPassword')} />
+              </div>
+              {updateAdminMut.isSuccess && (
+                <p className="text-sm text-green-600 font-medium">✅ تم تحديث بيانات المسؤول بنجاح</p>
+              )}
+              {updateAdminMut.error && (
+                <p className="text-sm text-red-600">
+                  {(updateAdminMut.error as any)?.response?.data?.message ?? 'حدث خطأ'}
+                </p>
+              )}
+              <Button type="submit" size="sm" loading={updateAdminMut.isPending}>حفظ بيانات المسؤول</Button>
+            </form>
+          )}
+        </div>
       </Modal>
 
       {/* ─── Confirm Suspend ─── */}

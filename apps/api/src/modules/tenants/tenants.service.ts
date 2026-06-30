@@ -9,6 +9,7 @@ import { AuthService } from '../auth/auth.service';
 import {
   CreateTenantDto,
   UpdateTenantDto,
+  UpdateTenantAdminDto,
   TenantFilterDto,
 } from './dto/tenant.dto';
 import { addDays } from 'date-fns';
@@ -191,6 +192,32 @@ export class TenantsService {
       },
       recentAuditLogs: auditLogs,
     };
+  }
+
+  async updateAdmin(id: string, dto: UpdateTenantAdminDto) {
+    await this.findOne(id);
+
+    // Find the hr_admin employee for this tenant
+    const admin = await this.prisma.employee.findFirst({
+      where: { tenantId: id, roles: { some: { role: 'hr_admin' } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!admin) throw new NotFoundException('لم يتم العثور على مسؤول الشركة');
+
+    const updateData: any = {};
+    if (dto.adminName) updateData.fullName = dto.adminName;
+    if (dto.adminEmail) {
+      const existing = await this.prisma.employee.findFirst({
+        where: { email: dto.adminEmail, NOT: { id: admin.id } },
+      });
+      if (existing) throw new ConflictException('البريد الإلكتروني مستخدم بالفعل');
+      updateData.email = dto.adminEmail;
+    }
+    if (dto.adminPassword) {
+      updateData.passwordHash = await this.authService.hashPassword(dto.adminPassword);
+    }
+
+    return this.prisma.employee.update({ where: { id: admin.id }, data: updateData });
   }
 
   async softDelete(id: string) {

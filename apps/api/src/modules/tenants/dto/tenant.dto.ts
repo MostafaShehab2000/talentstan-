@@ -66,6 +66,12 @@ export class UpdateTenantDto {
   @ApiPropertyOptional() @IsOptional() @IsString() timezone?: string;
 }
 
+export class UpdateTenantAdminDto {
+  @ApiPropertyOptional() @IsOptional() @IsEmail() adminEmail?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() adminPassword?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() adminName?: string;
+}
+
 export class TenantFilterDto {
   @ApiPropertyOptional({ enum: TenantStatus }) @IsOptional() @IsEnum(TenantStatus) status?: TenantStatus;
   @ApiPropertyOptional({ enum: TenantType }) @IsOptional() @IsEnum(TenantType) type?: TenantType;

@@ -19,6 +19,7 @@ import { TenantsService } from './tenants.service';
 import {
   CreateTenantDto,
   UpdateTenantDto,
+  UpdateTenantAdminDto,
   TenantFilterDto,
 } from './dto/tenant.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -69,6 +70,13 @@ export class TenantsController {
   @ApiOperation({ summary: 'تفعيل حساب الشركة' })
   activate(@Param('id') id: string) {
     return this.tenantsService.activate(id);
+  }
+
+  @Patch(':id/admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تعديل بيانات مسؤول الشركة (email / password)' })
+  updateAdmin(@Param('id') id: string, @Body() dto: UpdateTenantAdminDto) {
+    return this.tenantsService.updateAdmin(id, dto);
   }
 
   @Get(':id/usage')
