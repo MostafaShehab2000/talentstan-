@@ -17,6 +17,8 @@ import { JobTitlesModule } from './modules/job-titles/job-titles.module';
 import { PermissionPolicyModule } from './modules/permission-policy/permission-policy.module';
 import { OtherRequestsModule } from './modules/other-requests/other-requests.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { FcmModule } from './common/notifications/fcm.module';
 import { ChatModule } from './common/gateways/chat.module';
 
@@ -42,6 +44,8 @@ import { ChatModule } from './common/gateways/chat.module';
     PermissionPolicyModule,
     OtherRequestsModule,
     AttendanceModule,
+    DashboardModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Building2, Users, FolderTree, GitBranch,
   CalendarDays, Briefcase, MessageSquare, HelpCircle,
-  FileText, ClipboardList, BarChart3, TrendingUp, Settings, LogOut, ScrollText, Fingerprint,
+  FileText, ClipboardList, BarChart3, TrendingUp, Settings, LogOut, ScrollText, Fingerprint, Network,
 } from 'lucide-react';
 import { clearSession } from '@/lib/auth';
 
@@ -36,6 +36,8 @@ const adminNav: NavItem[] = [
   { href: '/admin/appraisal', label: 'التقييمات', icon: <BarChart3 size={18} /> },
   { href: '/admin/communication', label: 'التواصل الداخلي', icon: <MessageSquare size={18} /> },
   { href: '/admin/reports', label: 'التقارير', icon: <TrendingUp size={18} /> },
+  { href: '/admin/org-chart', label: 'الهيكل التنظيمي', icon: <Network size={18} /> },
+  { href: '/admin/settings', label: 'الإعدادات', icon: <Settings size={18} /> },
 ];
 
 export function Sidebar({ type }: { type: 'super-admin' | 'admin' }) {

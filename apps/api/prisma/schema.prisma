@@ -67,6 +67,8 @@ model Tenant {
   otherRequests      OtherRequest[]
   attendanceRecords  AttendanceRecord[]
   biometricDevices   BiometricDevice[]
+  publicHolidays     PublicHoliday[]
+  workHoursSettings  WorkHoursSettings?
 
   @@map("tenants")
 }
@@ -1106,4 +1108,35 @@ model Notification {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────
+// PUBLIC HOLIDAYS & WORK HOURS
+// ─────────────────────────────────────────
+
+model PublicHoliday {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  date        DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("public_holidays")
+}
+
+model WorkHoursSettings {
+  id            String   @id @default(uuid())
+  tenantId      String   @unique
+  workDays      Int[]    @default([0,1,2,3,4])
+  startTime     String   @default("09:00")
+  endTime       String   @default("17:00")
+  lateAfterMins Int      @default(15)
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("work_hours_settings")
 }
