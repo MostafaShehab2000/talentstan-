@@ -20,8 +20,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const { identifier, password, tenantId } = dto;
 
-    // البحث عن الموظف — لو tenantId موجود نفلتر عليه، لو لأ نبحث بالإيميل في كل الشركات
-    const employee = await this.prisma.employee.findFirst({
+    const employees = await this.prisma.employee.findMany({
       where: {
         status: 'active',
         ...(tenantId ? { tenantId } : {}),
@@ -30,18 +29,15 @@ export class AuthService {
       include: { roles: true, tenant: true },
     });
 
+    const employee = tenantId ? employees[0] : (employees.length === 1 ? employees[0] : null);
+
     if (!employee || !employee.passwordHash) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
 
-    // التأكد إن الشركة نشطة
     const tenant = employee.tenant;
     if (!tenant || tenant.status !== 'active') {
       throw new UnauthorizedException('الشركة غير موجودة أو الاشتراك منتهي');
-    }
-
-    if (!employee || !employee.passwordHash) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
 
     const isValid = await bcrypt.compare(password, employee.passwordHash);
@@ -106,7 +102,6 @@ export class AuthService {
   }
 
   async superAdminLogin(email: string, password: string) {
-    // Super admin credentials from env (not stored in DB for security)
     const superAdminEmail = this.configService.get('SUPER_ADMIN_EMAIL');
     const superAdminPassword = this.configService.get('SUPER_ADMIN_PASSWORD');
 

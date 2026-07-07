@@ -256,8 +256,8 @@ export class EmployeesService {
 
   async getUpcomingBirthdays(tenantId: string) {
     const employees = await this.prisma.employee.findMany({
-      where: { tenantId, status: 'active', hireDate: { not: null } },
-      select: { id: true, fullName: true, profilePhotoUrl: true, hireDate: true,
+      where: { tenantId, status: 'active', birthDate: { not: null } },
+      select: { id: true, fullName: true, profilePhotoUrl: true, birthDate: true,
         jobTitle: { select: { title: true } }, department: { select: { name: true } } },
     });
 
@@ -267,15 +267,15 @@ export class EmployeesService {
 
     return employees
       .filter(e => {
-        if (!e.hireDate) return false;
-        const bd = new Date(e.hireDate);
+        if (!e.birthDate) return false;
+        const bd = new Date(e.birthDate);
         const thisYear = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
         return thisYear >= today && thisYear <= inSevenDays;
       })
       .map(e => ({
         ...e,
-        birthdayThisYear: new Date(today.getFullYear(), new Date(e.hireDate!).getMonth(), new Date(e.hireDate!).getDate()),
-        isToday: new Date(e.hireDate!).getMonth() === today.getMonth() && new Date(e.hireDate!).getDate() === today.getDate(),
+        birthdayThisYear: new Date(today.getFullYear(), new Date(e.birthDate!).getMonth(), new Date(e.birthDate!).getDate()),
+        isToday: new Date(e.birthDate!).getMonth() === today.getMonth() && new Date(e.birthDate!).getDate() === today.getDate(),
       }))
       .sort((a, b) => a.birthdayThisYear.getTime() - b.birthdayThisYear.getTime());
   }
