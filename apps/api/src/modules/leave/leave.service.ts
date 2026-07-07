@@ -478,9 +478,10 @@ export class LeaveService {
   async rejectRequest(tenantId: string, id: string, managerId: string, note?: string) {
     const req = await this.prisma.leaveRequest.findFirst({
       where: { id, tenantId, status: 'submitted' },
-      include: { employee: { select: { fcmToken: true } }, leaveType: true },
+      include: { employee: { select: { fcmToken: true, directManagerId: true } }, leaveType: true },
     });
     if (!req) throw new NotFoundException('الطلب غير موجود');
+    if (req.employee.directManagerId !== managerId) throw new ForbiddenException('لست مدير هذا الموظف');
     await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'rejected' } });
     if (req.employee?.fcmToken) {
       await this.fcm.send(req.employee.fcmToken, '❌ رفض مديرك طلبك', `تم رفض طلب ${req.leaveType?.name ?? 'الإجازة'}${note ? ': ' + note : ''}`);
