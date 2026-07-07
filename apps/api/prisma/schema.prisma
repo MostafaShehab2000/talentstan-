@@ -65,6 +65,7 @@ model Tenant {
   notifications      Notification[]
   permissionPolicy   PermissionPolicy?
   otherRequests      OtherRequest[]
+  otherRequestConfigs OtherRequestConfig[]
   attendanceRecords  AttendanceRecord[]
   biometricDevices   BiometricDevice[]
   publicHolidays     PublicHoliday[]
@@ -347,6 +348,8 @@ model LeaveType {
   carryOverCap       Decimal?
   requiresAttachment Boolean       @default(false)
   workflowTemplateId String?
+  approvalChain      ApprovalChain @default(manager_then_hr)
+  approverCode       String?
   minDays            Decimal?
   maxDays            Decimal?
   advanceNoticeDays  Int?
@@ -383,6 +386,26 @@ enum RequestStatus {
   rejected
   returned
   cancelled
+}
+
+enum ApprovalChain {
+  manager_then_hr
+  hr_only
+  specific_person
+}
+
+model OtherRequestConfig {
+  id              String        @id @default(uuid())
+  tenantId        String
+  type            OtherRequestType
+  approvalChain   ApprovalChain @default(manager_then_hr)
+  approverCode    String?
+  updatedAt       DateTime      @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@map("other_request_configs")
 }
 
 model LeaveRequest {

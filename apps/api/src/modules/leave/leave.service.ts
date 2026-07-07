@@ -4,9 +4,9 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+// ApprovalChain is used via leaveType.approvalChain field (string comparison)
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { FcmService } from '../../common/notifications/fcm.service';
-import { WorkflowService } from '../workflow/workflow.service';
 import { PermissionPolicyService } from '../permission-policy/permission-policy.service';
 import {
   CreateLeaveTypeDto,
@@ -24,7 +24,6 @@ import { differenceInBusinessDays, differenceInMinutes, parse } from 'date-fns';
 export class LeaveService {
   constructor(
     private prisma: PrismaService,
-    private workflowService: WorkflowService,
     private permissionPolicyService: PermissionPolicyService,
     private fcm: FcmService,
   ) {}
@@ -246,24 +245,6 @@ export class LeaveService {
       include: { leaveType: true, employee: { select: { fullName: true } } },
     });
 
-    // بدء الـ Workflow لو موجود — الـ status يفضل submitted لحد ما المدير يوافق
-    if (leaveType.workflowTemplateId) {
-      const wfInstance = await this.workflowService.startWorkflow({
-        tenantId,
-        workflowTemplateId: leaveType.workflowTemplateId,
-        relatedEntityType: 'leave_request',
-        relatedEntityId: request.id,
-        initiatorId: employeeId,
-      });
-
-      await this.prisma.leaveRequest.update({
-        where: { id: request.id },
-        data: { workflowInstanceId: wfInstance.id },
-      });
-
-      return { ...request, workflowInstanceId: wfInstance.id };
-    }
-
     return request;
   }
 
@@ -372,10 +353,6 @@ export class LeaveService {
       throw new BadRequestException('لا يمكن إلغاء طلب تمت معالجته');
     }
 
-    if (req.workflowInstanceId) {
-      await this.workflowService.cancel(req.workflowInstanceId, tenantId, employeeId);
-    }
-
     return this.prisma.leaveRequest.update({
       where: { id },
       data: { status: 'cancelled' },
@@ -391,11 +368,13 @@ export class LeaveService {
     });
     const teamIds = team.map((e) => e.id);
 
+    // فقط الطلبات التي تمر بالمدير (approvalChain = manager_then_hr)
     return this.prisma.leaveRequest.findMany({
       where: {
         tenantId,
         employeeId: { in: teamIds },
-        status: { in: ['submitted', 'in_review'] },
+        status: 'submitted',
+        leaveType: { approvalChain: 'manager_then_hr' },
       },
       include: {
         leaveType: true,
@@ -404,9 +383,6 @@ export class LeaveService {
             id: true, fullName: true, employeeCode: true, profilePhotoUrl: true,
             leaveBalances: { where: { year: new Date().getFullYear() } },
           },
-        },
-        workflowInstance: {
-          include: { actionsLog: { orderBy: { actedAt: 'asc' } } },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -471,16 +447,29 @@ export class LeaveService {
     return { data: requests, summary: { totalRequests: requests.length, totalDays, totalHours } };
   }
 
-  // ─── Manager: الموافقة الأولى → in_review ───
+  // ─── Manager: الموافقة → in_review (أو approved مباشرة لو hr_only) ───
   async approveRequest(tenantId: string, id: string, managerId: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId, status: { in: ['submitted', 'in_review'] } },
-      include: { employee: { select: { fcmToken: true, fullName: true } }, leaveType: true },
+      where: { id, tenantId, status: 'submitted' },
+      include: {
+        employee: { select: { fcmToken: true, fullName: true, directManagerId: true } },
+        leaveType: true,
+      },
     });
     if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعد في انتظار موافقتك');
-    await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'in_review' } });
+    if (req.employee.directManagerId !== managerId) throw new ForbiddenException('لست مدير هذا الموظف');
+
+    const chain = req.leaveType.approvalChain ?? 'manager_then_hr';
+    const newStatus = chain === 'manager_then_hr' ? 'in_review' : 'approved';
+
+    await this.prisma.leaveRequest.update({ where: { id }, data: { status: newStatus } });
+    if (newStatus === 'approved') await this.onRequestApproved(id);
+
+    const msg = newStatus === 'approved'
+      ? `تمت الموافقة النهائية على طلب ${req.leaveType?.name ?? 'الإجازة'}`
+      : `وافق المدير على طلب ${req.leaveType?.name ?? 'الإجازة'} — في انتظار اعتماد HR`;
     if (req.employee?.fcmToken) {
-      await this.fcm.send(req.employee.fcmToken, '✅ وافق مديرك على طلبك', `وافق المدير على طلب ${req.leaveType?.name ?? 'الإجازة'} — في انتظار اعتماد HR`);
+      await this.fcm.send(req.employee.fcmToken, '✅ تم قبول طلبك', msg);
     }
     return { success: true };
   }
@@ -502,10 +491,10 @@ export class LeaveService {
   // ─── HR: الاعتماد النهائي ───
   async hrApproveRequest(tenantId: string, id: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId, status: 'in_review' },
+      where: { id, tenantId, status: { in: ['in_review', 'submitted'] } },
       include: { employee: { select: { fcmToken: true } }, leaveType: true },
     });
-    if (!req) throw new NotFoundException('الطلب غير موجود أو لم يعتمده المدير بعد');
+    if (!req) throw new NotFoundException('الطلب غير موجود');
     await this.prisma.leaveRequest.update({ where: { id }, data: { status: 'approved' } });
     await this.onRequestApproved(id);
     if (req.employee?.fcmToken) {
@@ -517,7 +506,7 @@ export class LeaveService {
   // ─── HR: الرفض النهائي ───
   async hrRejectRequest(tenantId: string, id: string, note?: string) {
     const req = await this.prisma.leaveRequest.findFirst({
-      where: { id, tenantId, status: 'in_review' },
+      where: { id, tenantId, status: { in: ['in_review', 'submitted'] } },
       include: { employee: { select: { fcmToken: true } }, leaveType: true },
     });
     if (!req) throw new NotFoundException('الطلب غير موجود');

@@ -3,7 +3,7 @@ import {
   IsNumber, IsInt, IsNotEmpty, Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LeaveCategory, AccrualType } from '@prisma/client';
+import { LeaveCategory, AccrualType, ApprovalChain } from '@prisma/client';
 
 export class CreateLeaveTypeDto {
   @ApiProperty() @IsString() @IsNotEmpty() name: string;
@@ -59,6 +59,8 @@ export class UpdateLeaveTypeDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() minDays?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() maxDays?: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() advanceNoticeDays?: number;
+  @ApiPropertyOptional({ enum: ApprovalChain }) @IsOptional() @IsEnum(ApprovalChain) approvalChain?: ApprovalChain;
+  @ApiPropertyOptional() @IsOptional() @IsString() approverCode?: string;
 }
 
 export class SetLeaveBalanceDto {
