@@ -36,13 +36,21 @@ class HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _loadPendingCount() async {
-    try {
-      final res = await ApiClient().dio.get(
-        '/leave/requests/pending-my-approval',
-      );
-      final data = res.data is List ? res.data : (res.data['data'] ?? []);
-      if (mounted) setState(() => _pendingCount = (data as List).length);
-    } catch (_) {}
+    final api = ApiClient().dio;
+    int count = 0;
+
+    await Future.wait([
+      api.get('/leave/requests/pending-my-approval').then((r) {
+        final d = r.data is List ? r.data : (r.data['data'] ?? []);
+        count += (d as List).length;
+      }).catchError((_) {}),
+      api.get('/other-requests/pending-manager').then((r) {
+        final d = r.data is List ? r.data : (r.data['data'] ?? []);
+        count += (d as List).length;
+      }).catchError((_) {}),
+    ]);
+
+    if (mounted) setState(() => _pendingCount = count);
   }
 
   @override
