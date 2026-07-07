@@ -254,16 +254,12 @@ class _HomeTabState extends State<_HomeTab> {
                 children: [
                   _GreetingCard(user: user, profile: _profile),
                   const SizedBox(height: 16),
-                  _StoryStrip(items: _announcements),
-                  const SizedBox(height: 16),
                   _DashboardWidgets(
                     loading: _loading,
                     announcements: _announcements,
                     appraisals: _appraisals,
                     pendingRequests: _pendingRequests,
                   ),
-                  const SizedBox(height: 16),
-                  _ComposerCard(user: user),
                   const SizedBox(height: 16),
                   _QuickActions(profile: _profile),
                   const SizedBox(height: 16),
@@ -435,15 +431,7 @@ class _HomeAppBar extends StatelessWidget {
     scrolledUnderElevation: 0.8,
     shadowColor: const Color(0x18000000),
     titleSpacing: 16,
-    title: const Text(
-      'talentstan',
-      style: TextStyle(
-        color: kPrimary,
-        fontSize: 28,
-        fontWeight: FontWeight.w900,
-        letterSpacing: -1,
-      ),
-    ),
+    title: Image.asset('assets/images/logo_icon.png', height: 30),
     actions: [
       _AppBarBtn(icon: Icons.search_rounded, onTap: () {}),
       _AppBarBtn(icon: Icons.message_outlined, onTap: () {}),

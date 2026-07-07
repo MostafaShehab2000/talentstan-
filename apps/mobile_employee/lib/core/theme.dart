@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 
-const kPrimary      = Color(0xFF2563EB);
-const kPrimaryDark  = Color(0xFF1D4ED8);
-const kPrimaryLight = Color(0xFFEFF6FF);
-const kSurface      = Color(0xFFF4F6FA);
-const kBorder       = Color(0xFFE5E7EB);
+const kPrimary      = Color(0xFF0B6F73);
+const kPrimaryDark  = Color(0xFF083F52);
+const kPrimaryLight = Color(0xFFE0F7F5);
+const kSurface      = Color(0xFFF4FBFA);
+const kBorder       = Color(0xFFD8ECEA);
 const kText         = Color(0xFF111827);
 const kTextSub      = Color(0xFF6B7280);
 const kSuccess      = Color(0xFF16A34A);
 const kSuccessLight = Color(0xFFDCFCE7);
-const kWarning      = Color(0xFFD97706);
-const kWarningLight = Color(0xFFFEF3C7);
+const kWarning      = Color(0xFF0EA5A8);
+const kWarningLight = Color(0xFFD9F7F5);
 const kDanger       = Color(0xFFDC2626);
 const kDangerLight  = Color(0xFFFEE2E2);
-const kPurple       = Color(0xFF7C3AED);
-const kPurpleLight  = Color(0xFFEDE9FE);
+const kPurple       = Color(0xFF124E78);
+const kPurpleLight  = Color(0xFFDDEAF2);
 
 ThemeData buildTheme({bool dark = false}) {
   if (dark) return _darkTheme();
@@ -28,7 +28,7 @@ ThemeData _lightTheme() => ThemeData(
   scaffoldBackgroundColor: kSurface,
   fontFamily: 'Cairo',
   appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFFF7FCFB),
     foregroundColor: kText,
     elevation: 0,
     scrolledUnderElevation: 0.5,
@@ -52,7 +52,7 @@ ThemeData _lightTheme() => ThemeData(
     textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
   )),
   bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: Colors.white, selectedItemColor: kPrimary, unselectedItemColor: kTextSub,
+    backgroundColor: const Color(0xFFF7FCFB), selectedItemColor: kPrimary, unselectedItemColor: kTextSub,
     type: BottomNavigationBarType.fixed, elevation: 0,
     showSelectedLabels: true, showUnselectedLabels: true,
     selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
@@ -97,7 +97,7 @@ ThemeData _darkTheme() => ThemeData(
     textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),
   )),
   bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: Color(0xFF1A1D27), selectedItemColor: kPrimary, unselectedItemColor: Color(0xFF6B7280),
+    backgroundColor: Color(0xFF081F27), selectedItemColor: Color(0xFF19A6A6), unselectedItemColor: Color(0xFF8CA2A8),
     type: BottomNavigationBarType.fixed, elevation: 0,
     showSelectedLabels: true, showUnselectedLabels: true,
     selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Cairo'),

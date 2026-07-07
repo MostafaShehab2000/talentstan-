@@ -62,37 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      width: 78,
-                      height: 78,
-                      decoration: BoxDecoration(
-                        color: kPrimary,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kPrimary.withOpacity(0.25),
-                            blurRadius: 24,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.facebook_rounded,
-                        color: Colors.white,
-                        size: 44,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Talentstan',
-                      style: TextStyle(
-                        color: kText,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    Image.asset('assets/images/logo.png', width: 170, fit: BoxFit.contain),
+                    const SizedBox(height: 8),
                     const Text(
                       'منصة الموارد البشرية على طريقة فيسبوك',
                       style: TextStyle(color: kTextSub, fontSize: 14),

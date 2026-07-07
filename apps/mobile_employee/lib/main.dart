@@ -80,7 +80,7 @@ class _RootState extends State<_Root> {
   Widget build(BuildContext context) {
     if (!_initialized) {
       return const Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Color(0xFFF7FCFB),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
