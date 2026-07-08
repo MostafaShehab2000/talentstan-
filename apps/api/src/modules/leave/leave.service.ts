@@ -361,20 +361,18 @@ export class LeaveService {
 
   // ─── الطلبات المنتظرة اعتماد المدير ───
   async getPendingForManager(managerId: string, tenantId: string) {
-    // جيب الموظفين التابعين للمدير
     const team = await this.prisma.employee.findMany({
       where: { directManagerId: managerId, tenantId, status: 'active' },
       select: { id: true },
     });
     const teamIds = team.map((e) => e.id);
+    if (teamIds.length === 0) return [];
 
-    // فقط الطلبات التي تمر بالمدير (approvalChain = manager_then_hr)
-    return this.prisma.leaveRequest.findMany({
+    const requests = await this.prisma.leaveRequest.findMany({
       where: {
         tenantId,
         employeeId: { in: teamIds },
         status: 'submitted',
-        leaveType: { approvalChain: 'manager_then_hr' },
       },
       include: {
         leaveType: true,
@@ -387,6 +385,9 @@ export class LeaveService {
       },
       orderBy: { createdAt: 'asc' },
     });
+
+    // فقط الطلبات التي تمر بالمدير (approvalChain = manager_then_hr)
+    return requests.filter(r => (r.leaveType?.approvalChain ?? 'manager_then_hr') === 'manager_then_hr');
   }
 
   // ─── Team Calendar (للمدير) ───

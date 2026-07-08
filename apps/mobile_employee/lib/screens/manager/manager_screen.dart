@@ -45,6 +45,17 @@ class _ManagerScreenState extends State<ManagerScreen> {
     });
   }
 
+  // يحذف الطلب فوراً من القائمة ثم يعيد التحميل في الخلفية
+  void _removeLeave(String id) {
+    setState(() => _leaveRequests = _leaveRequests.where((r) => r['id'] != id).toList());
+    _load();
+  }
+
+  void _removeOther(String id) {
+    setState(() => _otherRequests = _otherRequests.where((r) => r['id'] != id).toList());
+    _load();
+  }
+
   int get _totalPending => _leaveRequests.length + _otherRequests.length;
 
   @override
@@ -85,7 +96,7 @@ class _ManagerScreenState extends State<ManagerScreen> {
                       const SizedBox(height: 8),
                       ..._leaveRequests.map((r) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _LeaveCard(r, onAction: _load),
+                        child: _LeaveCard(r, onRemove: () => _removeLeave(r['id'] as String)),
                       )),
                     ],
                     // ── إذن / مأمورية ──
@@ -100,7 +111,7 @@ class _ManagerScreenState extends State<ManagerScreen> {
                       const SizedBox(height: 8),
                       ..._otherRequests.map((r) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _OtherCard(r, onAction: _load),
+                        child: _OtherCard(r, onRemove: () => _removeOther(r['id'] as String)),
                       )),
                     ],
                   ],
@@ -152,8 +163,8 @@ class _SectionHeader extends StatelessWidget {
 
 class _LeaveCard extends StatefulWidget {
   final Map<String, dynamic> r;
-  final Future<void> Function() onAction;
-  const _LeaveCard(this.r, {required this.onAction});
+  final VoidCallback onRemove;
+  const _LeaveCard(this.r, {required this.onRemove});
   @override
   State<_LeaveCard> createState() => _LeaveCardState();
 }
@@ -165,12 +176,12 @@ class _LeaveCardState extends State<_LeaveCard> {
     setState(() => _processing = true);
     try {
       await ApiClient().dio.patch('/leave/requests/${widget.r['id']}/$action');
+      widget.onRemove(); // احذف فوراً من القائمة
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(action == 'approve' ? '✅ تمت الموافقة' : '❌ تم الرفض'),
           backgroundColor: action == 'approve' ? kSuccess : kDanger,
         ));
-        await widget.onAction();
       }
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] ?? 'حدث خطأ';
@@ -232,8 +243,8 @@ class _LeaveCardState extends State<_LeaveCard> {
 
 class _OtherCard extends StatefulWidget {
   final Map<String, dynamic> r;
-  final Future<void> Function() onAction;
-  const _OtherCard(this.r, {required this.onAction});
+  final VoidCallback onRemove;
+  const _OtherCard(this.r, {required this.onRemove});
   @override
   State<_OtherCard> createState() => _OtherCardState();
 }
@@ -251,12 +262,12 @@ class _OtherCardState extends State<_OtherCard> {
     setState(() => _processing = true);
     try {
       await ApiClient().dio.patch('/other-requests/${widget.r['id']}/manager-$action');
+      widget.onRemove(); // احذف فوراً من القائمة
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(action == 'approve' ? '✅ تمت الموافقة' : '❌ تم الرفض'),
           backgroundColor: action == 'approve' ? kSuccess : kDanger,
         ));
-        await widget.onAction();
       }
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] ?? 'حدث خطأ';
