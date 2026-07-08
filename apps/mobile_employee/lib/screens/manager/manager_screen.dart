@@ -45,15 +45,12 @@ class _ManagerScreenState extends State<ManagerScreen> {
     });
   }
 
-  // يحذف الطلب فوراً من القائمة ثم يعيد التحميل في الخلفية
   void _removeLeave(String id) {
-    setState(() => _leaveRequests = _leaveRequests.where((r) => r['id'] != id).toList());
-    _load();
+    if (mounted) setState(() => _leaveRequests = _leaveRequests.where((r) => r['id'] != id).toList());
   }
 
   void _removeOther(String id) {
-    setState(() => _otherRequests = _otherRequests.where((r) => r['id'] != id).toList());
-    _load();
+    if (mounted) setState(() => _otherRequests = _otherRequests.where((r) => r['id'] != id).toList());
   }
 
   int get _totalPending => _leaveRequests.length + _otherRequests.length;
